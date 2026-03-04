@@ -1,0 +1,47 @@
+import { useState } from 'react';
+// Importiamo i componenti necessari da react-router-dom
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+
+
+import Login from './pages/Login';
+import Catalogo from './pages/Catalogo';
+
+import './App.css';
+// Importiamo i componenti necessari da react-router-dom
+
+export default function App() {
+    const [token, setToken] = useState<string | null>(localStorage.getItem('jwt_token'));
+
+    // Rimuovo gli useEffect che gestivano lo stato a mano,
+    // ora è il Router che gestisce i cambi di pagina!
+
+    return (
+        // Il Router "avvolge" tutta la nostra applicazione
+        <Router>
+            <Routes>
+
+                {/* Rotta per la pagina di Login */}
+                <Route
+                    path="/login"
+                    element={
+                        // Protezione: Se ho già il token, evito che l'utente vada su /login e lo rimando al catalogo
+                        token ? <Navigate to="/" /> : <Login setToken={setToken} />
+                    }
+                />
+
+                {/* Rotta principale (Catalogo) */}
+                <Route
+                    path="/"
+                    element={
+                        // Protezione: Se NON ho il token, rimando l'utente al login
+                        token ? <Catalogo token={token} setToken={setToken} /> : <Navigate to="/login" />
+                    }
+                />
+
+                {/* Rotta di fallback: se scrivi un URL sbagliato ti rimando alla home */}
+                <Route path="*" element={<Navigate to="/" />} />
+
+            </Routes>
+        </Router>
+    );
+}
