@@ -1,13 +1,17 @@
-import { useState } from 'react';
+import  { useState } from 'react';
 // Importiamo i componenti necessari da react-router-dom
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
 
 import Login from './pages/Login';
 import Catalogo from './pages/Catalogo';
+import Carrello from "./pages/Carrello.tsx";
+import Profilo from "./pages/Profilo.tsx";
+import Ordini from "./pages/Ordini.tsx";
 
-import './App.css';
 // Importiamo i componenti necessari da react-router-dom
+
+
 
 export default function App() {
     const [token, setToken] = useState<string | null>(localStorage.getItem('jwt_token'));
@@ -16,7 +20,9 @@ export default function App() {
     // ora è il Router che gestisce i cambi di pagina!
 
     return (
-        // Il Router "avvolge" tutta la nostra applicazione
+
+
+    // Il Router "avvolge" tutta la nostra applicazione
         <Router>
             <Routes>
 
@@ -35,8 +41,39 @@ export default function App() {
                     element={
                         // Protezione: Se NON ho il token, rimando l'utente al login
                         token ? <Catalogo token={token} setToken={setToken} /> : <Navigate to="/login" />
+                }
+                />
+
+                {/* Rotta principale (Carrello) */}
+                <Route
+                    path="/carrello"
+                    element={
+                        // Protezione: Se NON ho il token, rimando l'utente al login.
+                        // Se ce l'ho, passo sia token che setToken!
+                        token ? <Carrello token={token} setToken={setToken} /> : <Navigate to="/login" />
                     }
                 />
+
+                {/* Rotta principale (Profilo) */}
+                <Route
+                    path="/profilo"
+                    element={
+                        // Protezione: Se NON ho il token, rimando l'utente al login.
+                        // Se ce l'ho, passo sia token che setToken!
+                        token ? <Profilo token={token} setToken={setToken} /> : <Navigate to="/login" />
+                    }
+                />
+
+                {/* Rotta principale (Ordini) */}
+                <Route
+                    path="/ordini"
+                    element={
+                        // Protezione: Se NON ho il token, rimando l'utente al login.
+                        // Se ce l'ho, passo sia token che setToken!
+                        token ? <Ordini token={token} setToken={setToken} /> : <Navigate to="/login" />
+                    }
+                />
+
 
                 {/* Rotta di fallback: se scrivi un URL sbagliato ti rimando alla home */}
                 <Route path="*" element={<Navigate to="/" />} />

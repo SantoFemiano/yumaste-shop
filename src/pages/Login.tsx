@@ -1,5 +1,3 @@
-import React from 'react';
-
 import { useState } from 'react'; // Rimosso l'import di React
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
