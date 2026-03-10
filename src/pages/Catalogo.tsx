@@ -2,34 +2,28 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
 import type { BoxCatalogo } from '../types/BoxCatalogo';
+import { useNavigate } from 'react-router-dom';
 
 const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null) => void }> = ({ token, setToken }) => {
-    // 1. STATI DELL'APPLICAZIONE
+    const navigate = useNavigate();
+
     const [boxes, setBoxes] = useState<BoxCatalogo[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [errore, setErrore] = useState<string | null>(null); // Nuovo stato per gli errori
+    const [errore, setErrore] = useState<string | null>(null);
 
-    // Stati per la Paginazione
     const [paginaAttuale, setPaginaAttuale] = useState(0);
     const [totalePagine, setTotalePagine] = useState(0);
 
-    // 2. EFFETTO PER IL CARICAMENTO DATI
     useEffect(() => {
         scaricaCatalogo(paginaAttuale);
     }, [paginaAttuale]);
 
-    // 3. FUNZIONE DI CHIAMATA API
     const scaricaCatalogo = async (numeroPagina: number) => {
         setIsLoading(true);
-        setErrore(null); // Resettiamo l'errore ad ogni nuovo tentativo
+        setErrore(null);
 
         try {
-            const config = {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            };
-
+            const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
             const url = `http://localhost:8084/api/public/boxes?page=${numeroPagina}&size=8`;
             const response = await axios.get(url, config);
 
@@ -42,7 +36,6 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
                 setErrore("Formato dati non valido ricevuto dal server.");
                 setBoxes([]);
             }
-
         } catch (error) {
             console.error("Errore durante il download del catalogo:", error);
             setErrore("Impossibile caricare il catalogo. Verifica la tua connessione o riprova più tardi.");
@@ -52,30 +45,20 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
         }
     };
 
-    // 4. HANDLER DEGLI EVENTI
-// 4. HANDLER DEGLI EVENTI
     const aggiungiAlCarrello = async (id: number, nomeBox: string) => {
+        if (!token) {
+            alert("Devi effettuare l'accesso per aggiungere prodotti al carrello! 🔒");
+            navigate('/login');
+            return;
+        }
+
         try {
-            // 1. Prepariamo gli header con il token JWT per l'autenticazione
-            const config = {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            };
-
-            // 2. Costruiamo il body della richiesta ESATTAMENTE come descritto in Swagger
-            const payload = {
-                boxId: id,       // L'id della box su cui l'utente ha cliccato
-                quantita: 1      // Di default aggiungiamo 1 quantità alla volta
-            };
-
-            // 3. Facciamo la chiamata POST all'endpoint corretto indicato da Swagger
+            const config = { headers: { Authorization: `Bearer ${token}` } };
+            const payload = { boxId: id, quantita: 1 };
             const url = 'http://localhost:8084/api/user/cart/add';
+
             await axios.post(url, payload, config);
-
-            // 4. Se la chiamata va a buon fine, mostriamo il feedback all'utente
             alert(`Hai aggiunto "${nomeBox}" al tuo carrello! 🛒`);
-
         } catch (error) {
             console.error("Errore durante l'aggiunta al carrello:", error);
             alert("Ops! Non è stato possibile aggiungere la box al carrello. Riprova.");
@@ -84,7 +67,7 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
 
     const vaiAllaPaginaPrecedente = () => {
         if (paginaAttuale > 0) setPaginaAttuale(paginaAttuale - 1);
-        window.scrollTo({ top: 0, behavior: 'smooth' }); // Riporta l'utente su in modo fluido
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const vaiAllaPaginaSuccessiva = () => {
@@ -92,8 +75,6 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    // 5. COMPONENTI INTERNI (Skeleton Loader)
-    // Mostriamo delle finte card che pulsano durante il caricamento per una UX top di gamma
     const SkeletonLoader = () => (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
             {[...Array(8)].map((_, i) => (
@@ -114,13 +95,10 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
         </div>
     );
 
-    // 6. RENDER PRINCIPALE
     return (
         <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
-            <Navbar setToken={setToken} />
-
+            <Navbar token={token} setToken={setToken} />
             <main className="max-w-7xl mx-auto p-6 lg:p-8">
-                {/* Header della pagina */}
                 <div className="mb-10 text-center md:text-left">
                     <h2 className="text-4xl font-extrabold text-slate-900 mb-3 tracking-tight">Esplora le nostre Box</h2>
                     <p className="text-lg text-slate-600 max-w-2xl">
@@ -128,7 +106,6 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
                     </p>
                 </div>
 
-                {/* Gestione degli Stati della Pagina: Errore, Caricamento o Contenuto */}
                 {errore ? (
                     <div className="bg-red-50 border-l-4 border-red-500 p-6 rounded-lg shadow-sm flex items-start gap-4">
                         <span className="text-2xl">⚠️</span>
@@ -153,25 +130,23 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
                     </div>
                 ) : (
                     <>
-                        {/* Griglia Prodotti */}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
                             {boxes.map((box) => (
-                                <div key={box.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col group">
-
-                                    {/* Area Immagine (Placeholder) e Badge Sconto */}
+                                <div
+                                    key={box.id}
+                                    onClick={() => navigate(`/box/${box.id}`)}
+                                    className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col group cursor-pointer"
+                                >
                                     <div className="relative h-48 bg-slate-100 flex items-center justify-center group-hover:bg-slate-200 transition-colors">
                                         <span className="text-6xl group-hover:scale-110 transition-transform duration-300">🍲</span>
-
-                                        {box.prezzoScontato && (
+                                        {(box.prezzoScontato && box.prezzoScontato < (box.prezzo || 0)) ? (
                                             <div className="absolute top-4 left-4 bg-rose-500 text-white text-xs font-black px-3 py-1.5 rounded-lg shadow-md uppercase tracking-wider">
                                                 {box.scontoApplicato} OFF
                                             </div>
-                                        )}
+                                        ) : null}
                                     </div>
 
-                                    {/* Corpo della Card */}
                                     <div className="p-6 flex flex-col flex-grow">
-                                        {/* Categorie */}
                                         <div className="flex gap-2 mb-3 flex-wrap">
                                             {(box.categorie || []).map(cat => (
                                                 <span key={cat} className="bg-indigo-50 text-indigo-700 text-[11px] font-bold px-2.5 py-1 rounded-md uppercase tracking-wide">
@@ -180,7 +155,6 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
                                             ))}
                                         </div>
 
-                                        {/* Testi */}
                                         <h3 className="text-xl font-bold text-slate-900 mb-2 leading-tight group-hover:text-indigo-600 transition-colors">
                                             {box.nome}
                                         </h3>
@@ -188,21 +162,29 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
                                             {box.descrizione}
                                         </p>
 
-                                        {/* Footer Card: Prezzo e Bottone */}
                                         <div className="mt-auto flex items-end justify-between border-t border-slate-50 pt-4">
                                             <div className="flex flex-col">
-                                                {box.prezzoScontato ? (
+                                                {(box.prezzoScontato && box.prezzoScontato < (box.prezzo || 0)) ? (
                                                     <>
-                                                        <span className="text-xs text-slate-400 line-through font-medium">€{(box.prezzo || 0).toFixed(2)}</span>
-                                                        <span className="text-2xl font-black text-rose-600">€{(box.prezzoScontato).toFixed(2)}</span>
+                                                        <span className="text-xs text-slate-400 line-through font-medium">
+                                                            €{(box.prezzo || 0).toFixed(2)}
+                                                        </span>
+                                                        <span className="text-2xl font-black text-rose-600">
+                                                            €{box.prezzoScontato.toFixed(2)}
+                                                        </span>
                                                     </>
                                                 ) : (
-                                                    <span className="text-2xl font-black text-slate-900">€{(box.prezzo || 0).toFixed(2)}</span>
+                                                    <span className="text-2xl font-black text-slate-900">
+                                                        €{(box.prezzo || 0).toFixed(2)}
+                                                    </span>
                                                 )}
                                             </div>
 
                                             <button
-                                                onClick={() => aggiungiAlCarrello(box.id, box.nome)}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    aggiungiAlCarrello(box.id, box.nome);
+                                                }}
                                                 className="bg-slate-900 text-white p-3.5 rounded-xl hover:bg-indigo-600 transition-all shadow-md hover:shadow-lg hover:shadow-indigo-200 active:scale-95 flex items-center justify-center"
                                                 title="Aggiungi al carrello"
                                             >
@@ -216,7 +198,6 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
                             ))}
                         </div>
 
-                        {/* Controlli di Paginazione */}
                         {totalePagine > 1 && (
                             <div className="flex items-center justify-center gap-6 mt-16 mb-8">
                                 <button
@@ -226,11 +207,9 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
                                 >
                                     &larr; Precedente
                                 </button>
-
                                 <div className="text-slate-500 font-medium">
                                     Pagina <span className="text-slate-900 font-bold">{paginaAttuale + 1}</span> di <span className="text-slate-900 font-bold">{totalePagine}</span>
                                 </div>
-
                                 <button
                                     onClick={vaiAllaPaginaSuccessiva}
                                     disabled={paginaAttuale >= totalePagine - 1}

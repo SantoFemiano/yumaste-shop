@@ -1,6 +1,6 @@
 import { useState } from 'react'; // Rimosso l'import di React
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 const Login: React.FC<{ setToken: (token: string | null) => void }> = ({ setToken }) => {
     const [email, setEmail] = useState('');
@@ -71,6 +71,8 @@ const Login: React.FC<{ setToken: (token: string | null) => void }> = ({ setToke
                         />
                     </div>
 
+
+
                     <div className="space-y-1">
                         <div className="flex justify-between items-center">
                             <label className="text-sm font-semibold text-slate-700 block">Password</label>
@@ -96,6 +98,15 @@ const Login: React.FC<{ setToken: (token: string | null) => void }> = ({ setToke
                     >
                         {caricamentoLogin ? 'Accesso in corso...' : 'Entra nel Negozio'}
                     </button>
+
+                    {/* --- Registrazione --- */}
+                    <div className="text-center text-sm text-slate-500 mt-6 pt-4 border-t border-slate-100">
+                        Non hai ancora un account?{' '}
+                        <Link to="/registrazione" className="text-indigo-600 font-bold hover:underline">
+                            Registrati ora
+                        </Link>
+                    </div>
+                    {/* ------------------------------ */}
                 </form>
             </div>
         </div>

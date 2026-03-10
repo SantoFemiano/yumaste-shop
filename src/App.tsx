@@ -8,6 +8,8 @@ import Catalogo from './pages/Catalogo';
 import Carrello from "./pages/Carrello.tsx";
 import Profilo from "./pages/Profilo.tsx";
 import Ordini from "./pages/Ordini.tsx";
+import Registrazione from "./pages/Registrazione.tsx";
+import DettaglioBox from "./pages/DettaglioBox.tsx";
 
 // Importiamo i componenti necessari da react-router-dom
 
@@ -25,6 +27,15 @@ export default function App() {
     // Il Router "avvolge" tutta la nostra applicazione
         <Router>
             <Routes>
+                {/* NUOVA ROTTA: Registrazione */}
+
+                <Route
+                    path="/registrazione"
+                    element={
+                        // Protezione: Se ho già il token, evito che l'utente vada su /registrazione e lo rimando al catalogo
+                        token ? <Navigate to="/" /> : <Registrazione />
+                    }
+                />
 
                 {/* Rotta per la pagina di Login */}
                 <Route
@@ -38,10 +49,7 @@ export default function App() {
                 {/* Rotta principale (Catalogo) */}
                 <Route
                     path="/"
-                    element={
-                        // Protezione: Se NON ho il token, rimando l'utente al login
-                        token ? <Catalogo token={token} setToken={setToken} /> : <Navigate to="/login" />
-                }
+                    element={<Catalogo token={token} setToken={setToken} />}
                 />
 
                 {/* Rotta principale (Carrello) */}
@@ -72,6 +80,12 @@ export default function App() {
                         // Se ce l'ho, passo sia token che setToken!
                         token ? <Ordini token={token} setToken={setToken} /> : <Navigate to="/login" />
                     }
+                />
+
+                {/* Rotta principale (Dettaglio Box) */}
+                <Route
+                    path="/box/:id"
+                    element={<DettaglioBox token={token} setToken={setToken} />}
                 />
 
 

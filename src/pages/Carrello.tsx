@@ -89,7 +89,7 @@ const Carrello: React.FC<{ token: string | null; setToken: (token: string | null
 
     return (
         <div className="min-h-screen bg-gray-50">
-            <Navbar setToken={setToken} />
+            <Navbar token={token} setToken={setToken} />
 
             <div className="p-8">
                 <div className="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-md">
