@@ -1,9 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { motion } from 'framer-motion';
+import {
+    ChevronLeft,
+    ShoppingCart,
+    Zap,
+    Beef,
+    Wheat,
+    Droplets,
+    AlertTriangle,
+    ListChecks,
+    Loader2
+} from 'lucide-react';
+
 import Navbar from '../components/Navbar';
 
-// --- INTERFACCE BASATE SUL TUO JSON ---
+// --- INTERFACCE ---
 interface Ingrediente {
     nomeIngrediente: string;
     quantitaNellaBox: number;
@@ -11,10 +24,7 @@ interface Ingrediente {
     chilocalorie: number;
     proteine: number;
     carboidrati: number;
-    zuccheri: number;
-    fibre: number;
     grassi: number;
-    sale: number;
 }
 
 interface DettaglioBoxData {
@@ -39,7 +49,7 @@ interface DettaglioBoxData {
 }
 
 const DettaglioBox: React.FC<{ token: string | null; setToken: (token: string | null) => void }> = ({ token, setToken }) => {
-    const { id } = useParams<{ id: string }>(); // Prende l'ID dall'URL
+    const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
 
     const [box, setBox] = useState<DettaglioBoxData | null>(null);
@@ -49,169 +59,238 @@ const DettaglioBox: React.FC<{ token: string | null; setToken: (token: string | 
     useEffect(() => {
         const scaricaDettaglio = async () => {
             try {
-                // Endpoint pubblico: non serve il token per leggere i dettagli
                 const url = `http://localhost:8084/api/public/box/detail/${id}`;
                 const response = await axios.get(url);
                 setBox(response.data);
-            } catch (error) {
-                console.error("Errore nel caricamento dei dettagli:", error);
-                setErrore("Impossibile caricare i dettagli di questa box.");
+            } catch {
+                setErrore("Impossibile caricare i dettagli della box.");
             } finally {
                 setIsLoading(false);
             }
         };
-
-        if (id) scaricaDettaglio();
+        if (id) void scaricaDettaglio();
     }, [id]);
 
     const aggiungiAlCarrello = async () => {
         if (!token) {
-            alert("Devi effettuare l'accesso per aggiungere prodotti al carrello! 🔒");
             navigate('/login');
             return;
         }
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            const payload = { boxId: Number(id), quantita: 1 };
-            await axios.post('http://localhost:8084/api/user/cart/add', payload, config);
-            alert(`Hai aggiunto "${box?.nome}" al tuo carrello! 🛒`);
-        } catch (error) {
-            console.error("Errore carrello:", error);
-            alert("Errore durante l'aggiunta al carrello.");
+            await axios.post('http://localhost:8084/api/user/cart/add', { boxId: Number(id), quantita: 1 }, config);
+            window.alert("Aggiunto al carrello! 🛒");
+        } catch {
+            window.alert("Errore nell'aggiunta al carrello.");
         }
     };
 
-    if (isLoading) return <div className="min-h-screen bg-slate-50 flex items-center justify-center"><div className="animate-pulse text-xl text-slate-500 font-semibold">Caricamento ricetta...</div></div>;
-    if (errore || !box) return <div className="min-h-screen bg-slate-50 flex items-center justify-center"><div className="text-red-500 text-xl">{errore || "Box non trovata"}</div></div>;
+    if (isLoading) return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-50">
+            <Loader2 className="w-12 h-12 animate-spin text-indigo-600" />
+        </div>
+    );
+
+    if (errore || !box) return <div className="min-h-screen flex items-center justify-center text-rose-500 font-bold">{errore || "Box non trovata"}</div>;
+
+    const totaleGrammiMacro = (box.macroTotali?.proteine + box.macroTotali?.carboidrati + box.macroTotali?.grassi) || 1;
 
     return (
-        <div className="min-h-screen bg-slate-50 font-sans text-slate-900 pb-20">
+        <div className="min-h-screen bg-slate-50/50 font-sans pb-20">
             <Navbar token={token} setToken={setToken} />
 
-            <main className="max-w-6xl mx-auto p-6 lg:p-8 mt-6">
-                <button onClick={() => navigate(-1)} className="text-indigo-600 font-semibold hover:underline mb-6 flex items-center gap-2">
-                    &larr; Torna al catalogo
+            <main className="max-w-7xl mx-auto px-6 lg:px-8 py-8">
+                <button
+                    onClick={() => navigate(-1)}
+                    className="mb-8 flex items-center text-slate-500 hover:text-indigo-600 font-bold transition-colors group"
+                >
+                    <ChevronLeft className="mr-2 w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+                    Torna al catalogo
                 </button>
 
-                {/* SEZIONE SUPERIORE: Immagine e Info Base */}
-                <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden flex flex-col md:flex-row mb-8">
-                    {/* Immagine */}
-                    <div className="md:w-1/2 h-80 md:h-auto bg-slate-200 relative flex items-center justify-center">
-                        {box.immagineUrl ? (
-                            <img src={box.immagineUrl} alt={box.nome} className="w-full h-full object-cover" />
-                        ) : (
-                            <span className="text-8xl">🍲</span>
-                        )}
-                        {box.prezzoScontato && box.prezzoScontato < box.prezzoOriginale && (
-                            <div className="absolute top-6 left-6 bg-rose-500 text-white font-black px-4 py-2 rounded-xl shadow-lg uppercase tracking-wide">
-                                -{box.percentualeSconto}% OFF
-                            </div>
-                        )}
-                    </div>
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
 
-                    {/* Dettagli acquisto */}
-                    <div className="md:w-1/2 p-8 lg:p-12 flex flex-col justify-center">
-                        <span className="text-sm font-bold text-indigo-600 uppercase tracking-widest mb-2">{box.categoria}</span>
-                        <h1 className="text-4xl font-extrabold text-slate-900 mb-6 leading-tight">{box.nome}</h1>
-
-                        <div className="flex items-end gap-4 mb-8">
-                            {box.prezzoScontato && box.prezzoScontato < box.prezzoOriginale ? (
-                                <>
-                                    <span className="text-xl text-slate-400 line-through font-medium">€{box.prezzoOriginale.toFixed(2)}</span>
-                                    <span className="text-5xl font-black text-rose-600">€{box.prezzoScontato.toFixed(2)}</span>
-                                </>
-                            ) : (
-                                <span className="text-5xl font-black text-slate-900">€{box.prezzoOriginale.toFixed(2)}</span>
-                            )}
-                        </div>
-
-                        <button
-                            onClick={aggiungiAlCarrello}
-                            className="w-full md:w-auto bg-slate-900 hover:bg-indigo-600 text-white text-lg font-bold py-4 px-8 rounded-xl shadow-md transition-all active:scale-95 flex items-center justify-center gap-3"
+                    {/* COLONNA SINISTRA: MEDIA & INFO ACQUISTO */}
+                    <div className="lg:col-span-7">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="relative aspect-video rounded-4xl overflow-hidden shadow-2xl border-4 border-white bg-white"
                         >
-                            <span>Aggiungi al Carrello</span>
-                            <span>🛒</span>
-                        </button>
-                    </div>
-                </div>
+                            {box.immagineUrl ? (
+                                <img src={box.immagineUrl} alt={box.nome} className="w-full h-full object-cover" />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center bg-slate-100 text-8xl">🍲</div>
+                            )}
+                            {box.prezzoScontato !== null && (
+                                <div className="absolute top-8 left-8 bg-rose-500 text-white px-6 py-2 text-lg font-black rounded-2xl shadow-xl">
+                                    -{box.percentualeSconto}%
+                                </div>
+                            )}
+                        </motion.div>
 
-                {/* SEZIONE INFERIORE: Dettagli Tecnici in Griglia */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div className="mt-10 space-y-6">
+                            <span className="inline-block border border-indigo-200 text-indigo-600 bg-indigo-50/50 uppercase font-bold tracking-widest px-4 py-1 rounded-full text-xs">
+                                {box.categoria}
+                            </span>
+                            <h1 className="text-5xl font-black tracking-tight text-slate-900 leading-[1.1]">{box.nome}</h1>
 
-                    {/* Colonna Sinistra: Valori Nutrizionali & Allergeni */}
-                    <div className="lg:col-span-1 space-y-8">
-                        {/* Macro */}
-                        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-                            <h3 className="text-xl font-bold mb-6 flex items-center gap-2">📊 Valori Nutrizionali <span className="text-sm font-normal text-slate-400">(Totali)</span></h3>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="bg-orange-50 p-4 rounded-2xl text-center">
-                                    <div className="text-2xl font-black text-orange-600">{box.macroTotali.chilocalorie}</div>
-                                    <div className="text-xs font-bold text-orange-800 uppercase tracking-wide mt-1">Kcal</div>
-                                </div>
-                                <div className="bg-blue-50 p-4 rounded-2xl text-center">
-                                    <div className="text-2xl font-black text-blue-600">{box.macroTotali.proteine.toFixed(1)}g</div>
-                                    <div className="text-xs font-bold text-blue-800 uppercase tracking-wide mt-1">Proteine</div>
-                                </div>
-                                <div className="bg-yellow-50 p-4 rounded-2xl text-center">
-                                    <div className="text-2xl font-black text-yellow-600">{box.macroTotali.carboidrati.toFixed(1)}g</div>
-                                    <div className="text-xs font-bold text-yellow-800 uppercase tracking-wide mt-1">Carboidrati</div>
-                                </div>
-                                <div className="bg-red-50 p-4 rounded-2xl text-center">
-                                    <div className="text-2xl font-black text-red-600">{box.macroTotali.grassi.toFixed(1)}g</div>
-                                    <div className="text-xs font-bold text-red-800 uppercase tracking-wide mt-1">Grassi</div>
-                                </div>
-                            </div>
-                            <div className="mt-4 text-sm text-slate-500 grid grid-cols-2 gap-2 px-2">
-                                <div>Zuccheri: <span className="font-semibold text-slate-700">{box.macroTotali.zuccheri.toFixed(1)}g</span></div>
-                                <div>Fibre: <span className="font-semibold text-slate-700">{box.macroTotali.fibre.toFixed(1)}g</span></div>
-                                <div>Sale: <span className="font-semibold text-slate-700">{box.macroTotali.sale.toFixed(2)}g</span></div>
+                            <div className="flex flex-wrap items-center gap-8 py-4">
+                                {box.prezzoScontato !== null ? (
+                                    <div className="flex items-baseline gap-3">
+                                        <span className="text-5xl font-black text-rose-600">€{box.prezzoScontato.toFixed(2)}</span>
+                                        <span className="text-xl text-slate-400 line-through">€{box.prezzoOriginale.toFixed(2)}</span>
+                                    </div>
+                                ) : (
+                                    <span className="text-5xl font-black text-slate-900">€{box.prezzoOriginale.toFixed(2)}</span>
+                                )}
+
+                                <button
+                                    onClick={aggiungiAlCarrello}
+                                    className="h-16 px-10 rounded-2xl bg-slate-900 text-white text-lg font-bold shadow-xl hover:bg-indigo-600 hover:scale-105 transition-all flex items-center"
+                                >
+                                    <ShoppingCart className="mr-3 w-6 h-6" /> Aggiungi al carrello
+                                </button>
                             </div>
                         </div>
-
-                        {/* Allergeni */}
-                        {box.allergeni && box.allergeni.length > 0 && (
-                            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-                                <h3 className="text-xl font-bold mb-4 flex items-center gap-2">⚠️ Allergeni</h3>
-                                <div className="flex flex-wrap gap-2">
-                                    {box.allergeni.map((allergene, index) => (
-                                        <span key={index} className="bg-slate-100 text-slate-700 font-semibold px-3 py-1.5 rounded-lg text-sm">
-                                            {allergene}
-                                        </span>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
                     </div>
 
-                    {/* Colonna Destra: Ingredienti */}
-                    <div className="lg:col-span-2">
-                        <div className="bg-white p-6 lg:p-8 rounded-3xl shadow-sm border border-slate-100 h-full">
-                            <h3 className="text-2xl font-bold mb-6">Cosa troverai nella box</h3>
+                    {/* COLONNA DESTRA: NUTRITION HUB (FIXATO) */}
+                    <div className="lg:col-span-5">
+                        <motion.div
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.2 }}
+                            className="bg-white rounded-4xl shadow-xl shadow-slate-200/50 overflow-hidden border border-white"
+                        >
+                            {/* Header scuro con overflow-hidden sul padre per evitare il taglio */}
+                            <div className="bg-slate-900 p-8 text-white">
+                                <div className="flex items-center justify-between mb-6">
+                                    <h3 className="text-xl font-bold flex items-center gap-2">
+                                        <Zap className="w-5 h-5 text-yellow-400 fill-yellow-400" />
+                                        Nutrition Hub
+                                    </h3>
+                                    <div className="text-right">
+                                        <div className="text-4xl font-black">{box.macroTotali?.chilocalorie || 0}</div>
+                                        <div className="text-xs uppercase font-bold text-slate-400">Kcal Totali</div>
+                                    </div>
+                                </div>
 
-                            <div className="divide-y divide-slate-100">
-                                {box.ingredienti.map((ing, idx) => (
-                                    <div key={idx} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                        <div>
-                                            <div className="font-bold text-lg text-slate-900">{ing.nomeIngrediente}</div>
-                                            <div className="text-sm text-slate-500 mt-1">
-                                                {ing.chilocalorie} kcal • {ing.proteine}g pro • {ing.carboidrati}g carbo • {ing.grassi}g grassi
-                                            </div>
+                                <div className="grid grid-cols-3 gap-4">
+                                    <div className="bg-white/10 rounded-2xl p-4 backdrop-blur-sm">
+                                        <Beef className="w-4 h-4 text-blue-400 mb-2" />
+                                        <div className="text-xl font-bold">{(box.macroTotali?.proteine || 0).toFixed(1)}g</div>
+                                        <div className="text-[10px] uppercase font-bold text-slate-400">Proteine</div>
+                                    </div>
+                                    <div className="bg-white/10 rounded-2xl p-4 backdrop-blur-sm">
+                                        <Wheat className="w-4 h-4 text-orange-400 mb-2" />
+                                        <div className="text-xl font-bold">{(box.macroTotali?.carboidrati || 0).toFixed(1)}g</div>
+                                        <div className="text-[10px] uppercase font-bold text-slate-400">Carbo</div>
+                                    </div>
+                                    <div className="bg-white/10 rounded-2xl p-4 backdrop-blur-sm">
+                                        <Droplets className="w-4 h-4 text-yellow-400 mb-2" />
+                                        <div className="text-xl font-bold">{(box.macroTotali?.grassi || 0).toFixed(1)}g</div>
+                                        <div className="text-[10px] uppercase font-bold text-slate-400">Grassi</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="p-8 space-y-6">
+                                <div className="space-y-4">
+                                    <div className="flex justify-between text-sm font-bold text-slate-700">
+                                        <span>Ripartizione Energetica</span>
+                                        <span className="text-indigo-600">Bilanciamento Macro</span>
+                                    </div>
+                                    {/* Progress Bar Multi-colore */}
+                                    <div className="flex h-3 w-full rounded-full overflow-hidden bg-slate-100 shadow-inner">
+                                        <div style={{ width: `${((box.macroTotali?.proteine || 0) / totaleGrammiMacro) * 100}%` }} className="bg-blue-500" />
+                                        <div style={{ width: `${((box.macroTotali?.carboidrati || 0) / totaleGrammiMacro) * 100}%` }} className="bg-orange-500" />
+                                        <div style={{ width: `${((box.macroTotali?.grassi || 0) / totaleGrammiMacro) * 100}%` }} className="bg-yellow-400" />
+                                    </div>
+                                    <div className="flex justify-between text-[10px] font-black uppercase text-slate-500 px-1">
+                                        <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-blue-500" /> PRO</span>
+                                        <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-orange-500" /> CARBO</span>
+                                        <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-yellow-400" /> GRASSI</span>
+                                    </div>
+                                </div>
+
+                                <div className="h-px bg-slate-100 w-full" />
+
+                                <div className="grid grid-cols-2 gap-y-4 gap-x-8">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-sm font-medium text-slate-500">Zuccheri</span>
+                                        <span className="font-bold text-slate-800">{box.macroTotali?.zuccheri || 0}g</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-sm font-medium text-slate-500">Fibre</span>
+                                        <span className="font-bold text-slate-800">{box.macroTotali?.fibre || 0}g</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-sm font-medium text-slate-500">Sale</span>
+                                        <span className="font-bold text-rose-500">{box.macroTotali?.sale || 0}g</span>
+                                    </div>
+                                </div>
+
+                                {box.allergeni && box.allergeni.length > 0 && (
+                                    <div className="pt-4 border-t border-slate-50">
+                                        <div className="flex items-center gap-2 text-rose-600 font-bold text-xs uppercase mb-3">
+                                            <AlertTriangle className="w-4 h-4" /> Attenzione Allergeni
                                         </div>
-                                        <div className="text-right">
-                                            <span className="inline-block bg-indigo-50 text-indigo-700 font-bold px-4 py-2 rounded-xl">
-                                                {ing.quantitaNellaBox} {ing.unitaMisura}
-                                            </span>
+                                        <div className="flex flex-wrap gap-2">
+                                            {box.allergeni.map((allergene) => (
+                                                <span key={allergene} className="px-3 py-1 rounded-lg border border-rose-100 bg-rose-50 text-rose-700 font-bold text-xs">
+                                                    {allergene}
+                                                </span>
+                                            ))}
                                         </div>
                                     </div>
-                                ))}
-                                {box.ingredienti.length === 0 && (
-                                    <div className="text-slate-500 italic py-4">Nessun ingrediente specificato.</div>
                                 )}
                             </div>
+                        </motion.div>
+                    </div>
+                </div>
+
+                {/* SEZIONE INGREDIENTI */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    className="mt-16 bg-white rounded-4xl shadow-lg p-8 md:p-12 border border-slate-50"
+                >
+                    <div className="flex items-center gap-3 mb-10">
+                        <div className="p-3 bg-indigo-600 rounded-2xl text-white">
+                            <ListChecks className="w-6 h-6" />
                         </div>
+                        <h3 className="text-3xl font-black tracking-tight text-slate-900">Cosa troverai dentro</h3>
                     </div>
 
-                </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {box.ingredienti?.map((ing, idx) => (
+                            <div key={ing.nomeIngrediente || idx} className="group relative flex items-start gap-5 p-6 rounded-3xl hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100">
+                                <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 shrink-0 group-hover:bg-indigo-600 group-hover:text-white transition-colors font-black">
+                                    {idx + 1}
+                                </div>
+                                <div>
+                                    <h4 className="font-black text-lg text-slate-900 leading-tight">{ing.nomeIngrediente}</h4>
+                                    <div className="flex flex-wrap items-center gap-2 text-sm text-slate-500 mt-2 font-bold">
+                                        <span className="text-indigo-600">{ing.quantitaNellaBox}{ing.unitaMisura}</span>
+                                        <span className="text-slate-300">•</span>
+                                        <span>{ing.proteine}g Proteine</span>
+                                        <span className="text-slate-300">•</span>
+                                        <span>{ing.carboidrati}g Carboidrati</span>
+                                        <span className="text-slate-300">•</span>
+                                        <span>{ing.grassi}g Grassi</span>
+                                        <span className="text-slate-300">•</span>
+                                        <span className="flex items-center gap-2 text-rose-600 font-bold text-xs uppercase mb-3">{ing.chilocalorie}Kcal</span>
+
+
+
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </motion.div>
             </main>
         </div>
     );

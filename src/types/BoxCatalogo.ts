@@ -5,5 +5,6 @@ export interface BoxCatalogo {
     prezzo: number;
     prezzoScontato: number | null;
     scontoApplicato: string | null;
+    immagineUrl: string | null;
     categorie: string[];
 }

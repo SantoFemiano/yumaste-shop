@@ -1,6 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+    ChevronLeft,
+    Package,
+    Calendar,
+    Truck,
+    CreditCard,
+    MapPin,
+    ChevronDown,
+    Box as BoxIcon,
+    History,
+    Loader2
+} from 'lucide-react';
+
+// Shadcn UI (Simulated/Standard tailwind)
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+
 import Navbar from '../components/Navbar';
 
 // --- INTERFACCE ---
@@ -37,11 +57,8 @@ interface OrdiniDettagliDTO {
 const Ordini: React.FC<{ token: string | null; setToken: (token: string | null) => void }> = ({ token, setToken }) => {
     const navigate = useNavigate();
 
-    // Stati per la lista degli ordini principale
     const [ordini, setOrdini] = useState<Ordine[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-
-    // Stati per la gestione del singolo ordine espanso
     const [ordineEspanso, setOrdineEspanso] = useState<number | null>(null);
     const [dettagliOrdine, setDettagliOrdine] = useState<OrdiniDettagliDTO[]>([]);
     const [isLoadingDettagli, setIsLoadingDettagli] = useState(false);
@@ -50,9 +67,7 @@ const Ordini: React.FC<{ token: string | null; setToken: (token: string | null) 
         const scaricaOrdini = async () => {
             try {
                 const config = { headers: { Authorization: `Bearer ${token}` } };
-                // URL per prendere tutti gli ordini dell'utente
-                const url = 'http://localhost:8084/api/user/ordini';
-                const response = await axios.get(url, config);
+                const response = await axios.get('http://localhost:8084/api/user/ordini', config);
                 setOrdini(response.data);
             } catch (error) {
                 console.error("Errore caricamento ordini:", error);
@@ -63,181 +78,194 @@ const Ordini: React.FC<{ token: string | null; setToken: (token: string | null) 
         if (token) scaricaOrdini();
     }, [token]);
 
-    // Funzione per scaricare i dettagli e aprire/chiudere la tendina
     const toggleDettagli = async (idOrdine: number) => {
-        // Se clicco su un ordine già aperto, lo chiudo
         if (ordineEspanso === idOrdine) {
             setOrdineEspanso(null);
-            setDettagliOrdine([]);
             return;
         }
 
-        // Altrimenti lo apro e carico i dati
         setOrdineEspanso(idOrdine);
         setIsLoadingDettagli(true);
 
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            // L'URL esatto che abbiamo creato nel Controller Spring Boot
             const url = `http://localhost:8084/api/user/ordine/${idOrdine}/dettagli`;
             const response = await axios.get(url, config);
-
-            setDettagliOrdine(response.data); // È una List<OrdiniDettagliDTO>
+            setDettagliOrdine(response.data);
         } catch (error) {
-            console.error("Errore caricamento dettagli ordine:", error);
-            alert("Impossibile caricare i dettagli dell'ordine.");
+            window.alert("Impossibile caricare i dettagli dell'ordine.");
             setOrdineEspanso(null);
         } finally {
             setIsLoadingDettagli(false);
         }
     };
 
-    const getStatusColor = (status: string) => {
-        switch (status?.toUpperCase()) {
-            case 'COMPLETATO': return 'bg-green-100 text-green-800';
-            case 'IN_ATTESA': return 'bg-yellow-100 text-yellow-800';
-            case 'SPEDITO': return 'bg-blue-100 text-blue-800';
-            default: return 'bg-gray-100 text-gray-800';
-        }
+    const getStatusBadge = (status: string) => {
+        const s = status?.toUpperCase();
+        if (s === 'COMPLETATO') return <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white border-none px-3 py-1 rounded-lg">Completato</Badge>;
+        if (s === 'IN_ATTESA' || s === 'ELABORAZIONE') return <Badge className="bg-amber-500 text-white border-none px-3 py-1 rounded-lg">In Attesa</Badge>;
+        if (s === 'SPEDITO') return <Badge className="bg-blue-500 text-white border-none px-3 py-1 rounded-lg">Spedito</Badge>;
+        return <Badge variant="secondary" className="px-3 py-1 rounded-lg">{status}</Badge>;
     };
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-slate-50/50 font-sans pb-20">
             <Navbar token={token} setToken={setToken} />
-            <div className="p-8 max-w-4xl mx-auto">
-                <div className="flex items-center justify-between mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900">I miei Ordini</h1>
-                    <button onClick={() => navigate(-1)} className="text-indigo-600 hover:underline">
-                        Torna indietro
-                    </button>
+
+            <main className="max-w-5xl mx-auto px-6 lg:px-8 py-8">
+                <Button variant="ghost" onClick={() => navigate(-1)} className="mb-8 hover:bg-white rounded-xl">
+                    <ChevronLeft className="mr-2 w-4 h-4" /> Torna allo Shop
+                </Button>
+
+                <div className="flex items-center gap-4 mb-10">
+                    <div className="p-4 bg-indigo-600 rounded-2xl text-white shadow-lg shadow-indigo-200">
+                        <History className="w-8 h-8" />
+                    </div>
+                    <div>
+                        <h1 className="text-4xl font-black tracking-tight text-slate-900">I miei Ordini</h1>
+                        <p className="text-slate-500 font-medium">Gestisci e traccia i tuoi acquisti recenti</p>
+                    </div>
                 </div>
 
                 {isLoading ? (
-                    <div className="space-y-4">
+                    <div className="space-y-6">
                         {[1, 2, 3].map(i => (
-                            <div key={i} className="h-24 bg-white rounded-xl animate-pulse shadow-sm"></div>
+                            <div key={i} className="h-32 bg-white rounded-[2rem] animate-pulse border border-slate-100" />
                         ))}
                     </div>
                 ) : ordini.length > 0 ? (
                     <div className="space-y-6">
                         {ordini.map((ord) => (
-                            <div key={ord.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
-
-                                {/* HEADER DELL'ORDINE (Sempre visibile) */}
-                                <div className="p-6">
-                                    <div className="flex flex-wrap justify-between items-start gap-4 mb-4">
-                                        <div>
-                                            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Codice Ordine</p>
-                                            <p className="text-lg font-mono font-bold text-indigo-600">{ord.codiceOrdine}</p>
-                                        </div>
-                                        <div className="text-right">
-                                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(ord.statoOrdine)}`}>
-                                                {ord.statoOrdine}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 py-4 border-t border-gray-50">
-                                        <div>
-                                            <p className="text-xs text-gray-400">Data</p>
-                                            <p className="font-medium">{new Date(ord.dataOrdine).toLocaleDateString()}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-gray-400">Spedizione</p>
-                                            <p className="font-medium text-sm">{ord.statoSpedizione}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-gray-400">Totale</p>
-                                            <p className="font-bold text-lg">€ {ord.totalePrezzo.toFixed(2)}</p>
-                                        </div>
-                                        <div className="flex items-center justify-end">
-                                            <button
-                                                onClick={() => toggleDettagli(ord.id)}
-                                                className={`text-sm font-semibold px-4 py-1.5 rounded-lg transition-colors ${ordineEspanso === ord.id ? 'bg-indigo-600 text-white' : 'text-indigo-600 border border-indigo-600 hover:bg-indigo-50'}`}
-                                            >
-                                                {ordineEspanso === ord.id ? 'Chiudi' : 'Dettagli'}
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* SEZIONE ESPANSA (Dettagli scaricati dall'API) */}
-                                {ordineEspanso === ord.id && (
-                                    <div className="bg-slate-50 border-t border-gray-100 p-6 animate-in fade-in slide-in-from-top-2 duration-300">
-                                        {isLoadingDettagli ? (
-                                            <div className="flex justify-center py-4">
-                                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-                                            </div>
-                                        ) : dettagliOrdine.length > 0 ? (
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-
-                                                {/* Colonna 1: Prodotti Acquistati */}
+                            <Card key={ord.id} className="rounded-[2rem] border-none shadow-xl shadow-slate-200/50 overflow-hidden bg-white">
+                                <CardContent className="p-0">
+                                    {/* Header dell'ordine */}
+                                    <div className="p-8">
+                                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                                            <div className="flex items-center gap-5">
+                                                <div className="h-14 w-14 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-600">
+                                                    <Package className="w-7 h-7" />
+                                                </div>
                                                 <div>
-                                                    <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Box nell'Ordine:</h3>
-                                                    <div className="space-y-3">
-                                                        {dettagliOrdine.map((dettaglio, index) => (
-                                                            <div key={index} className="flex justify-between items-center bg-white p-3 rounded-lg border border-gray-100 shadow-sm">
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className="h-10 w-10 bg-indigo-50 text-indigo-600 rounded-md flex items-center justify-center font-bold">
-                                                                        {dettaglio.quantita}x
-                                                                    </div>
-                                                                    <div>
-                                                                        {/* NOTA: Il tuo DTO manda solo il boxid, se in futuro aggiungi il nome della box nel backend, cambialo qui! */}
-                                                                        <p className="font-semibold text-gray-800">Box #{dettaglio.boxid}</p>
-                                                                        <p className="text-xs text-gray-500">€{dettaglio.prezzounitario.toFixed(2)} cad.</p>
-                                                                    </div>
-                                                                </div>
-                                                                <div className="font-bold text-gray-900">
-                                                                    €{(dettaglio.prezzounitario * dettaglio.quantita).toFixed(2)}
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
+                                                    <p className="text-xs font-black uppercase tracking-widest text-slate-400 mb-1">Codice Ordine</p>
+                                                    <p className="text-xl font-bold text-slate-900 tracking-tight">{ord.codiceOrdine}</p>
                                                 </div>
-
-                                                {/* Colonna 2: Info Spedizione e Pagamento */}
-                                                <div className="space-y-6">
-                                                    <div>
-                                                        <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Indirizzo di Spedizione</h3>
-                                                        <div className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm text-sm text-gray-600">
-                                                            <p className="font-semibold text-gray-800">{dettagliOrdine[0].corriere}</p>
-                                                            <p>{dettagliOrdine[0].indirizzoresponsedto.via}, {dettagliOrdine[0].indirizzoresponsedto.civico}</p>
-                                                            <p>{dettagliOrdine[0].indirizzoresponsedto.cap} {dettagliOrdine[0].indirizzoresponsedto.citta} ({dettagliOrdine[0].indirizzoresponsedto.provincia})</p>
-                                                        </div>
-                                                    </div>
-
-                                                    <div>
-                                                        <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Dettagli Pagamento</h3>
-                                                        <div className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm text-sm text-gray-600 flex justify-between items-center">
-                                                            <div>
-                                                                <p className="font-semibold text-gray-800">{dettagliOrdine[0].metodopagamento}</p>
-                                                                <p className="text-xs text-gray-400">Eseguito il {new Date(dettagliOrdine[0].datapagamento).toLocaleDateString()}</p>
-                                                            </div>
-                                                            <div className="font-black text-lg text-gray-900">
-                                                                €{dettagliOrdine[0].importo.toFixed(2)}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
                                             </div>
-                                        ) : (
-                                            <p className="text-center text-gray-500 py-4">Nessun dettaglio disponibile.</p>
-                                        )}
+
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-8 flex-grow max-w-2xl">
+                                                <div className="space-y-1">
+                                                    <p className="text-xs font-bold text-slate-400 uppercase flex items-center gap-1.5"><Calendar className="w-3 h-3" /> Data</p>
+                                                    <p className="font-bold text-slate-700">{new Date(ord.dataOrdine).toLocaleDateString()}</p>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <p className="text-xs font-bold text-slate-400 uppercase flex items-center gap-1.5"><Truck className="w-3 h-3" /> Status</p>
+                                                    {getStatusBadge(ord.statoOrdine)}
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <p className="text-xs font-bold text-slate-400 uppercase">Totale</p>
+                                                    <p className="text-xl font-black text-slate-900">€{ord.totalePrezzo.toFixed(2)}</p>
+                                                </div>
+                                            </div>
+
+                                            <Button
+                                                onClick={() => toggleDettagli(ord.id)}
+                                                variant={ordineEspanso === ord.id ? "default" : "outline"}
+                                                className={`rounded-xl h-12 px-6 font-bold transition-all ${ordineEspanso === ord.id ? 'bg-slate-900 shadow-lg shadow-slate-200' : 'border-slate-200 hover:bg-slate-50'}`}
+                                            >
+                                                Dettagli <ChevronDown className={`ml-2 w-4 h-4 transition-transform duration-300 ${ordineEspanso === ord.id ? 'rotate-180' : ''}`} />
+                                            </Button>
+                                        </div>
                                     </div>
-                                )}
-                            </div>
+
+                                    {/* Sezione Espandibile */}
+                                    <AnimatePresence>
+                                        {ordineEspanso === ord.id && (
+                                            <motion.div
+                                                initial={{ height: 0, opacity: 0 }}
+                                                animate={{ height: "auto", opacity: 1 }}
+                                                exit={{ height: 0, opacity: 0 }}
+                                                transition={{ duration: 0.3, ease: "easeInOut" }}
+                                            >
+                                                <div className="bg-slate-50/80 border-t border-slate-100 p-8">
+                                                    {isLoadingDettagli ? (
+                                                        <div className="flex justify-center py-8">
+                                                            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                                                        </div>
+                                                    ) : (
+                                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                                                            {/* Lista Prodotti */}
+                                                            <div className="space-y-4">
+                                                                <h4 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-6 flex items-center gap-2">
+                                                                    <BoxIcon className="w-4 h-4" /> Articoli inclusi
+                                                                </h4>
+                                                                {dettagliOrdine.map((d, i) => (
+                                                                    <div key={i} className="flex items-center justify-between bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                                                                        <div className="flex items-center gap-4">
+                                                                            <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center font-black text-sm">
+                                                                                {d.quantita}x
+                                                                            </div>
+                                                                            <div>
+                                                                                <p className="font-bold text-slate-800">Box Pasto #{d.boxid}</p>
+                                                                                <p className="text-xs font-medium text-slate-400">Prezzo unitario: €{d.prezzounitario.toFixed(2)}</p>
+                                                                            </div>
+                                                                        </div>
+                                                                        <p className="font-black text-slate-900">€{(d.prezzounitario * d.quantita).toFixed(2)}</p>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+
+                                                            {/* Spedizione & Pagamento */}
+                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                                                <div className="space-y-4">
+                                                                    <h4 className="text-sm font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                                                                        <MapPin className="w-4 h-4" /> Spedizione
+                                                                    </h4>
+                                                                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-1">
+                                                                        <p className="font-black text-slate-900 text-sm mb-2 uppercase text-indigo-600">{dettagliOrdine[0]?.corriere}</p>
+                                                                        <p className="text-sm font-bold text-slate-700">{dettagliOrdine[0]?.indirizzoresponsedto.via}, {dettagliOrdine[0]?.indirizzoresponsedto.civico}</p>
+                                                                        <p className="text-xs font-medium text-slate-500">{dettagliOrdine[0]?.indirizzoresponsedto.cap} {dettagliOrdine[0]?.indirizzoresponsedto.citta} ({dettagliOrdine[0]?.indirizzoresponsedto.provincia})</p>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="space-y-4">
+                                                                    <h4 className="text-sm font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                                                                        <CreditCard className="w-4 h-4" /> Pagamento
+                                                                    </h4>
+                                                                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                                                                        <p className="font-black text-slate-900 text-sm mb-1">{dettagliOrdine[0]?.metodopagamento.replace(/_/g, ' ')}</p>
+                                                                        <p className="text-[10px] font-bold text-slate-400 uppercase mb-4">Eseguito il {new Date(dettagliOrdine[0]?.datapagamento).toLocaleDateString()}</p>
+                                                                        <Separator className="mb-4" />
+                                                                        <div className="flex justify-between items-center">
+                                                                            <span className="text-xs font-bold text-slate-400">Importo</span>
+                                                                            <span className="text-lg font-black text-slate-900">€{dettagliOrdine[0]?.importo.toFixed(2)}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </CardContent>
+                            </Card>
                         ))}
                     </div>
                 ) : (
-                    <div className="text-center py-20 bg-white rounded-3xl shadow-inner border-2 border-dashed border-gray-200">
-                        <p className="text-gray-400 text-xl mb-4">Non hai ancora effettuato ordini.</p>
-                        <button onClick={() => navigate('/')} className="bg-indigo-600 text-white px-6 py-2 rounded-full font-bold">
-                            Vai allo shop
-                        </button>
-                    </div>
+                    <Card className="rounded-[3rem] border-2 border-dashed border-slate-200 bg-transparent shadow-none">
+                        <CardContent className="flex flex-col items-center justify-center py-24 text-center">
+                            <div className="w-20 h-20 bg-slate-100 rounded-3xl flex items-center justify-center text-slate-300 mb-6">
+                                <Package className="w-10 h-10" />
+                            </div>
+                            <h3 className="text-2xl font-black text-slate-400 mb-2">Ancora nessun ordine</h3>
+                            <p className="text-slate-400 mb-8 max-w-xs">Sembra che tu non abbia ancora gustato le nostre box!</p>
+                            <Button onClick={() => navigate('/')} size="lg" className="rounded-2xl font-bold h-14 px-8 shadow-lg shadow-primary/20">
+                                Inizia ora
+                            </Button>
+                        </CardContent>
+                    </Card>
                 )}
-            </div>
+            </main>
         </div>
     );
 };

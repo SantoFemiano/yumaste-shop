@@ -1,13 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+    User,
+    Mail,
+    MapPin,
+    Lock,
+    ChevronLeft,
+    Camera,
+    CheckCircle2,
+    Loader2,
+    X,
+    LogOut,
+    AlertTriangle
+} from 'lucide-react';
+
 import Navbar from '../components/Navbar';
 
 interface DatiUtente {
     nome: string;
     cognome: string;
     email: string;
-    dataRegistrazione?: string;
 }
 
 interface Indirizzo {
@@ -17,7 +31,6 @@ interface Indirizzo {
     cap: string;
     civico: string;
     provincia: string;
-    note?: string;
 }
 
 const Profilo: React.FC<{ token: string | null; setToken: (token: string | null) => void }> = ({ token, setToken }) => {
@@ -26,404 +39,279 @@ const Profilo: React.FC<{ token: string | null; setToken: (token: string | null)
     const [isLoading, setIsLoading] = useState(true);
     const [errore, setErrore] = useState<string | null>(null);
     const [indirizzi, setIndirizzi] = useState<Indirizzo[]>([]);
-    // Stati per modifica profili
+
     const [isEditingProfile, setIsEditingProfile] = useState(false);
     const [datiModifica, setDatiModifica] = useState<DatiUtente | null>(null);
-// Stato per mostrare/nascondere il modal (inserimento indirizzi)
     const [isModalAperto, setIsModalAperto] = useState(false);
-    // Stati per il cambio password
     const [isEditingPassword, setIsEditingPassword] = useState(false);
-    const [passwordData, setPasswordData] = useState({
-        vecchiaPassword: '',
-        nuovaPassword: '',
-        confermaPassword: ''
-    });
-    const [isPasswordLoading, setIsPasswordLoading] = useState(false);
 
-    // Stato per i campi del nuovo indirizzo
-    const [nuovoIndirizzo, setNuovoIndirizzo] = useState({
-        via: '',
-        civico: '',
-        citta: '',
-        cap: '',
-        provincia: '',
-        note: ''
-    });
+    const [passwordData, setPasswordData] = useState({ vecchiaPassword: '', nuovaPassword: '', confermaPassword: '' });
+    const [isPasswordLoading, setIsPasswordLoading] = useState(false);
+    const [nuovoIndirizzo, setNuovoIndirizzo] = useState({ via: '', civico: '', citta: '', cap: '', provincia: '', note: '' });
 
     useEffect(() => {
         const scaricaDati = async () => {
             try {
                 const config = { headers: { Authorization: `Bearer ${token}` } };
-
-                // Chiamata Profilo
-                const resProfilo = await axios.get('http://localhost:8084/api/user/profile', config);
+                const [resProfilo, resIndirizzi] = await Promise.all([
+                    axios.get('http://localhost:8084/api/user/profile', config),
+                    axios.get('http://localhost:8084/api/user/indirizzi', config)
+                ]);
                 setUtente(resProfilo.data);
-
-                // Chiamata Indirizzi
-                const resIndirizzi = await axios.get('http://localhost:8084/api/user/indirizzi', config);
                 setIndirizzi(resIndirizzi.data);
-
-            } catch (error) {
-                console.error("Errore nel caricamento:", error);
-                setErrore("Impossibile caricare i dati.");
+            } catch {
+                setErrore("Impossibile caricare i dati del profilo.");
             } finally {
                 setIsLoading(false);
             }
         };
-        if (token) scaricaDati();
+        if (token) {
+            void scaricaDati();
+        }
     }, [token]);
-
-    const iniziaModificaProfilo = () => {
-        setDatiModifica(utente); // Copia i dati attuali nel form di modifica
-        setIsEditingProfile(true);
-    };
 
     const salvaModificheProfilo = async (e: React.FormEvent) => {
         e.preventDefault();
-
         if (!datiModifica || !utente) return;
-
-        // Capiamo se l'email sta per essere cambiata
         const emailCambiata = datiModifica.email !== utente.email;
 
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            const url = 'http://localhost:8084/api/user/update/profilo';
-
-            const response = await axios.put(url, datiModifica, config);
-
+            const response = await axios.put('http://localhost:8084/api/user/update/profilo', datiModifica, config);
             if (emailCambiata) {
-                // SE L'EMAIL È CAMBIATA:
-                alert("Email aggiornata con successo! Per sicurezza, effettua di nuovo l'accesso.");
+                window.alert("Email aggiornata! Effettua di nuovo il login.");
                 setToken(null);
                 localStorage.removeItem('jwt_token');
-                navigate('/login'); // Lo rimandiamo al login
+                navigate('/login');
             } else {
-                // SE HA CAMBIATO SOLO IL NOME/COGNOME:
                 setUtente(response.data);
                 setIsEditingProfile(false);
-                alert("Profilo aggiornato con successo!");
             }
-
-        } catch (error) {
-            console.error("Errore durante l'aggiornamento del profilo:", error);
-            alert("Errore durante l'aggiornamento. Riprova.");
-        }
-    };
-
-    const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (datiModifica) {
-            setDatiModifica({
-                ...datiModifica,
-                [e.target.name]: e.target.value
-            });
-        }
-    };
-
-    const aggiungiIndirizzo = async (e: React.FormEvent) => {
-        e.preventDefault(); // Evita il ricaricamento della pagina
-        try {
-            const config = { headers: { Authorization: `Bearer ${token}` } };
-            const url = 'http://localhost:8084/api/user/insert/indirizzo'; // Controlla URL su Swagger
-
-            const response = await axios.post(url, nuovoIndirizzo, config);
-
-            // Se va a buon fine, aggiorniamo la lista locale e chiudiamo il modal
-            setIndirizzi([...indirizzi, response.data]);
-            setIsModalAperto(false);
-            setNuovoIndirizzo({ via: '', civico: '', citta: '', cap: '', provincia: '', note: '' });
-            alert("Indirizzo aggiunto con successo! 🏠");
-        } catch (err) {
-            console.error("Errore aggiunta indirizzo:", err);
-            alert("Errore durante l'aggiunta. Riprova.");
+        } catch {
+            window.alert("Errore durante l'aggiornamento.");
         }
     };
 
     const salvaNuovaPassword = async (e: React.FormEvent) => {
         e.preventDefault();
-
-        // Controllo frontend: le due nuove password sono uguali?
         if (passwordData.nuovaPassword !== passwordData.confermaPassword) {
-            alert("La nuova password e la conferma non coincidono!");
+            window.alert("Le password non coincidono!");
             return;
         }
-
         setIsPasswordLoading(true);
-
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            const url = 'http://localhost:8084/api/user/update/profilo/password';
-
-            // Inviamo solo vecchia e nuova password (la conferma serve solo lato frontend)
-            const payload = {
+            await axios.put('http://localhost:8084/api/user/update/profilo/password', {
                 vecchiaPassword: passwordData.vecchiaPassword,
                 nuovaPassword: passwordData.nuovaPassword
-            };
-
-            await axios.put(url, payload, config);
-
-            alert("Password aggiornata con successo!");
+            }, config);
+            window.alert("Password aggiornata! 🔒");
             setIsEditingPassword(false);
-
-            // Puliamo i campi per sicurezza
             setPasswordData({ vecchiaPassword: '', nuovaPassword: '', confermaPassword: '' });
-
-        } catch (error) {
-            console.error("Errore cambio password:", error);
-
-            // 1. Controlliamo se è un errore generato da Axios
-            // 2. Leggiamo lo status DALL'ERRORE (error.response?.status)
-            if (axios.isAxiosError(error) && error.response?.status === 400) {
-                alert("La password attuale non è corretta.");
-            } else {
-                alert("Errore durante l'aggiornamento della password.");
-            }
+        } catch {
+            window.alert("Password attuale errata o errore di sistema.");
         } finally {
             setIsPasswordLoading(false);
         }
     };
 
+    const aggiungiIndirizzo = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            const config = { headers: { Authorization: `Bearer ${token}` } };
+            const response = await axios.post('http://localhost:8084/api/user/insert/indirizzo', nuovoIndirizzo, config);
+            setIndirizzi([...indirizzi, response.data]);
+            setIsModalAperto(false);
+            setNuovoIndirizzo({ via: '', civico: '', citta: '', cap: '', provincia: '', note: '' });
+        } catch {
+            window.alert("Errore aggiunta indirizzo.");
+        }
+    };
+
+    if (isLoading) return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-50">
+            <Loader2 className="w-10 h-10 animate-spin text-indigo-600" />
+        </div>
+    );
+
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-slate-50/50 pb-20 font-sans">
             <Navbar token={token} setToken={setToken} />
 
-            <div className="p-8">
-                <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-md overflow-hidden">
-                    <div className="h-32 bg-indigo-600"></div>
+            <main className="max-w-4xl mx-auto px-6 pt-8">
+                {errore && (
+                    <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-2xl flex items-center gap-2 border border-red-100">
+                        <AlertTriangle className="w-5 h-5" /> {errore}
+                    </div>
+                )}
 
-                    <div className="px-6 py-8 relative">
-                        {/* Avatar */}
-                        <div className="absolute -top-16 left-6 w-24 h-24 bg-white rounded-full p-1 shadow-lg">
-                            <div className="w-full h-full bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 text-3xl font-bold uppercase">
-                                {utente?.nome ? utente.nome.charAt(0) : 'U'}
+                <button onClick={() => navigate(-1)} className="mb-6 flex items-center text-slate-500 hover:text-slate-800 font-bold transition-colors">
+                    <ChevronLeft className="w-4 h-4 mr-2" /> Torna indietro
+                </button>
+
+                <div className="bg-white rounded-4xl shadow-2xl shadow-slate-200 overflow-hidden border border-white">
+                    {/* Header Profilo */}
+                    <div className="h-48 bg-linear-to-r from-indigo-600 via-violet-600 to-indigo-500 relative">
+                        <div className="absolute -bottom-16 left-10 p-1.5 bg-white rounded-4xl shadow-xl">
+                            <div className="w-32 h-32 bg-slate-100 rounded-3xl flex items-center justify-center text-indigo-600 relative group cursor-pointer">
+                                <span className="text-5xl font-black">{utente?.nome?.charAt(0)}</span>
+                                <div className="absolute inset-0 bg-black/40 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                                    <Camera className="w-8 h-8" />
+                                </div>
                             </div>
                         </div>
+                    </div>
 
-                        {/* Torna indietro */}
-                        <div className="flex justify-end mb-4">
-                            <button onClick={() => navigate(-1)} className="text-gray-500 hover:text-gray-800 font-medium transition-colors">
-                                Torna indietro
+                    <div className="pt-20 px-10 pb-10">
+                        <div className="flex flex-col md:flex-row justify-between items-start gap-6">
+                            <div>
+                                <h1 className="text-4xl font-black text-slate-900 tracking-tight">
+                                    {utente?.nome} {utente?.cognome}
+                                </h1>
+                                <p className="text-slate-500 font-medium flex items-center gap-2 mt-1">
+                                    <Mail className="w-4 h-4" /> {utente?.email}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => { setToken(null); navigate('/login'); }}
+                                className="px-4 py-2 rounded-xl border border-rose-100 text-rose-500 hover:bg-rose-50 font-bold flex items-center transition-colors"
+                            >
+                                <LogOut className="w-4 h-4 mr-2" /> Logout
                             </button>
                         </div>
 
-                        {isLoading ? (
-                            <div className="mt-8 text-center text-gray-500 py-10 animate-pulse text-lg">
-                                Caricamento dati profilo...
-                            </div>
-                        ) : errore ? (
-                            <div className="mt-8 text-center text-red-500 bg-red-50 p-4 rounded-lg">
-                                {errore}
-                            </div>
-                        ) : utente ? (
-                            <div className="mt-6">
-                                <h2 className="text-3xl font-extrabold text-gray-900">
-                                    {utente.nome} {utente.cognome}
-                                </h2>
-                                <p className="text-gray-500 text-lg mb-8">{utente.email}</p>
+                        <div className="my-10 h-px bg-slate-100 w-full" />
 
-                                {/* Dettagli Account */}
-                                <div className="border-t border-gray-100 pt-6">
-                                    <h3 className="text-lg font-semibold text-gray-800 mb-4 uppercase tracking-wider text-sm">Dettagli Account</h3>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                            {/* COLONNA SINISTRA: DATI PERSONALI */}
+                            <section className="space-y-8">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                        <User className="w-5 h-5 text-indigo-600" /> Info Personali
+                                    </h3>
+                                    {!isEditingProfile && (
+                                        <button onClick={() => { setDatiModifica(utente); setIsEditingProfile(true); }} className="text-indigo-600 font-bold hover:underline">
+                                            Modifica
+                                        </button>
+                                    )}
+                                </div>
 
+                                <AnimatePresence mode="wait">
                                     {isEditingProfile ? (
-                                        // MODALITÀ MODIFICA (FORM)
-                                        <form onSubmit={salvaModificheProfilo} className="space-y-4 max-w-md">
+                                        <motion.form initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} onSubmit={salvaModificheProfilo} className="space-y-4 bg-slate-50 p-6 rounded-3xl">
                                             <div className="grid grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nome</label>
-                                                    <input required type="text" name="nome" value={datiModifica?.nome || ''} onChange={handleProfileChange}
-                                                           className="w-full border-gray-300 border p-2 rounded-lg" />
+                                                <div className="space-y-1">
+                                                    <label className="text-xs font-bold text-slate-400 uppercase">Nome</label>
+                                                    <input value={datiModifica?.nome} onChange={e => setDatiModifica({...datiModifica!, nome: e.target.value})} className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none" />
                                                 </div>
-                                                <div>
-                                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Cognome</label>
-                                                    <input required type="text" name="cognome" value={datiModifica?.cognome || ''} onChange={handleProfileChange}
-                                                           className="w-full border-gray-300 border p-2 rounded-lg" />
+                                                <div className="space-y-1">
+                                                    <label className="text-xs font-bold text-slate-400 uppercase">Cognome</label>
+                                                    <input value={datiModifica?.cognome} onChange={e => setDatiModifica({...datiModifica!, cognome: e.target.value})} className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none" />
                                                 </div>
                                             </div>
-                                            <div>
-                                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Email</label>
-                                                {/* Di solito l'email non si fa cambiare facilmente per questioni di sicurezza, valuta se renderla readonly */}
-                                                <input required type="email" name="email" value={datiModifica?.email || ''} onChange={handleProfileChange}
-                                                       className="w-full border-gray-300 border p-2 rounded-lg" readOnly={false} />
-                                            </div>
-
-                                            <div className="flex gap-3 pt-4">
-                                                <button type="button" onClick={() => setIsEditingProfile(false)}
-                                                        className="px-4 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition-colors">
-                                                    Annulla
-                                                </button>
-                                                <button type="submit"
-                                                        className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors shadow">
-                                                    Salva
-                                                </button>
-                                            </div>
-                                        </form>
+                                            <button type="submit" className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold">Salva</button>
+                                            <button type="button" onClick={() => setIsEditingProfile(false)} className="w-full py-2 text-slate-500 font-bold">Annulla</button>
+                                        </motion.form>
                                     ) : (
-                                        // MODALITÀ VISUALIZZAZIONE
-                                        <>
-                                            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-6">
-                                                <div>
-                                                    <dt className="text-sm font-medium text-gray-400">Nome completo</dt>
-                                                    <dd className="mt-1 text-base text-gray-900 font-semibold">{utente.nome} {utente.cognome}</dd>
-                                                </div>
-                                                <div>
-                                                    <dt className="text-sm font-medium text-gray-400">Indirizzo Email</dt>
-                                                    <dd className="mt-1 text-base text-gray-900 font-semibold">{utente.email}</dd>
-                                                </div>
-                                            </dl>
-
-                                            {/* ZONA BOTTONI */}
-                                            <div className="mt-8 flex flex-wrap gap-4">
-                                                <button onClick={iniziaModificaProfilo} className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition-all shadow hover:shadow-lg">
-                                                    Modifica Profilo
-                                                </button>
-
-                                                {/* NUOVO BOTTONE CAMBIA PASSWORD */}
-                                                <button
-                                                    onClick={() => setIsEditingPassword(!isEditingPassword)}
-                                                    className="px-6 py-2 bg-white border-2 border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 font-semibold rounded-lg transition-all shadow-sm"
-                                                >
-                                                    {isEditingPassword ? 'Annulla Cambio Password' : 'Cambia Password'}
-                                                </button>
+                                        <div className="grid grid-cols-1 gap-6">
+                                            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                                                <p className="text-xs font-black uppercase tracking-widest text-slate-400 mb-1">Nome Completo</p>
+                                                <p className="font-bold text-slate-800 text-lg">{utente?.nome} {utente?.cognome}</p>
+                                            </div>
+                                            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                                                <p className="text-xs font-black uppercase tracking-widest text-slate-400 mb-1">Stato Account</p>
+                                                <p className="font-bold text-emerald-600 flex items-center gap-2">
+                                                    <CheckCircle2 className="w-4 h-4" /> Verificato & Attivo
+                                                </p>
                                             </div>
 
-                                            {/* FORM CAMBIO PASSWORD A TENDINA */}
-                                            {isEditingPassword && (
-                                                <div className="mt-6 p-6 bg-gray-50 border border-gray-200 rounded-xl max-w-md animate-in fade-in slide-in-from-top-4 duration-300">
-                                                    <h4 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                                                        <span>🔒</span> Aggiorna Password
-                                                    </h4>
-                                                    <form onSubmit={salvaNuovaPassword} className="space-y-4">
-                                                        <div>
-                                                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Password Attuale</label>
-                                                            <input required type="password" value={passwordData.vecchiaPassword}
-                                                                   onChange={(e) => setPasswordData({...passwordData, vecchiaPassword: e.target.value})}
-                                                                   className="w-full border-gray-300 border p-2.5 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none transition-all" />
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nuova Password</label>
-                                                            <input required type="password" minLength={6} value={passwordData.nuovaPassword}
-                                                                   onChange={(e) => setPasswordData({...passwordData, nuovaPassword: e.target.value})}
-                                                                   className="w-full border-gray-300 border p-2.5 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none transition-all" />
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Conferma Nuova Password</label>
-                                                            <input required type="password" minLength={6} value={passwordData.confermaPassword}
-                                                                   onChange={(e) => setPasswordData({...passwordData, confermaPassword: e.target.value})}
-                                                                   className="w-full border-gray-300 border p-2.5 rounded-lg focus:ring-2 focus:ring-indigo-600 outline-none transition-all" />
-                                                        </div>
-                                                        <div className="pt-2">
-                                                            <button
-                                                                type="submit"
-                                                                disabled={isPasswordLoading}
-                                                                className={`w-full py-2.5 text-white font-bold rounded-lg transition-colors shadow flex items-center justify-center ${isPasswordLoading ? 'bg-indigo-400 cursor-not-allowed' : 'bg-gray-900 hover:bg-gray-800'}`}
-                                                            >
-                                                                {isPasswordLoading ? 'Aggiornamento in corso...' : 'Salva Nuova Password'}
-                                                            </button>
-                                                        </div>
-                                                    </form>
-                                                </div>
-                                            )}
-                                        </>
+                                            <button
+                                                className="w-full h-14 rounded-2xl border border-slate-200 font-bold flex items-center px-6 hover:bg-slate-50 transition-colors"
+                                                onClick={() => setIsEditingPassword(!isEditingPassword)}
+                                            >
+                                                <Lock className="w-4 h-4 mr-3 text-slate-400" />
+                                                {isEditingPassword ? "Chiudi Modifica Password" : "Cambia Password"}
+                                            </button>
+
+                                            <AnimatePresence>
+                                                {isEditingPassword && (
+                                                    <motion.form initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} onSubmit={salvaNuovaPassword} className="space-y-4 overflow-hidden">
+                                                        <input type="password" placeholder="Password attuale" className="w-full p-3 rounded-xl border border-slate-200" required onChange={e => setPasswordData({...passwordData, vecchiaPassword: e.target.value})} />
+                                                        <input type="password" placeholder="Nuova password" className="w-full p-3 rounded-xl border border-slate-200" required onChange={e => setPasswordData({...passwordData, nuovaPassword: e.target.value})} />
+                                                        <input type="password" placeholder="Conferma password" className="w-full p-3 rounded-xl border border-slate-200" required onChange={e => setPasswordData({...passwordData, confermaPassword: e.target.value})} />
+                                                        <button disabled={isPasswordLoading} className="w-full h-12 bg-slate-900 text-white rounded-xl font-bold flex items-center justify-center">
+                                                            {isPasswordLoading ? <Loader2 className="animate-spin w-4 h-4" /> : "Aggiorna Password"}
+                                                        </button>
+                                                    </motion.form>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
                                     )}
+                                </AnimatePresence>
+                            </section>
+
+                            {/* COLONNA DESTRA: INDIRIZZI */}
+                            <section className="space-y-8">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                        <MapPin className="w-5 h-5 text-indigo-600" /> Indirizzi Consegna
+                                    </h3>
+                                    <button onClick={() => setIsModalAperto(true)} className="px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 font-bold text-sm">
+                                        + Aggiungi
+                                    </button>
                                 </div>
 
-                                {/* --- SEZIONE INDIRIZZI --- */}
-                                <div className="mt-10 border-t border-gray-100 pt-8">
-                                    <div className="flex justify-between items-center mb-6">
-                                        <h3 className="text-xl font-bold text-gray-800">I miei Indirizzi</h3>
-                                        <button
-                                            onClick={() => setIsModalAperto(true)}
-                                            className="text-sm font-semibold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-3 py-1 rounded-md transition-colors"
-                                        >
-                                            + Aggiungi
-                                        </button>
-                                    </div>
-
+                                <div className="space-y-4">
                                     {indirizzi.length > 0 ? (
-                                        <div className="grid grid-cols-1 gap-4">
-                                            {indirizzi.map((ind) => (
-                                                <div key={ind.id} className="p-4 border border-gray-200 rounded-xl hover:border-indigo-300 transition-colors relative group bg-gray-50/50">
-                                                    <div className="flex items-start gap-3">
-                                                        <span className="text-xl">📍</span>
-                                                        <div>
-                                                            <p className="font-semibold text-gray-900">
-                                                                {ind.via}, {ind.civico}
-                                                            </p>
-                                                            <p className="text-gray-600 text-sm">
-                                                                {ind.cap} {ind.citta} ({ind.provincia})
-                                                            </p>
-                                                        </div>
-                                                    </div>
+                                        indirizzi.map((ind) => (
+                                            <div key={ind.id} className="p-5 rounded-3xl border border-slate-100 bg-white shadow-sm flex items-start gap-4">
+                                                <div className="p-3 bg-slate-50 rounded-xl text-slate-400">
+                                                    <MapPin className="w-5 h-5" />
                                                 </div>
-                                            ))}
-                                        </div>
+                                                <div>
+                                                    <p className="font-bold text-slate-900">{ind.via}, {ind.civico}</p>
+                                                    <p className="text-sm font-medium text-slate-500">{ind.cap} {ind.citta} ({ind.provincia})</p>
+                                                </div>
+                                            </div>
+                                        ))
                                     ) : (
-                                        <div className="text-center py-8 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
-                                            <p className="text-gray-400 text-sm">Non hai ancora salvato nessun indirizzo.</p>
+                                        <div className="text-center py-10 border-2 border-dashed border-slate-100 rounded-3xl text-slate-400">
+                                            Nessun indirizzo salvato.
                                         </div>
                                     )}
                                 </div>
-                                {/* --- FINE SEZIONE INDIRIZZI --- */}
-
-                            </div> // Fine mt-6
-                        ) : null}
-                    </div> {/* Fine px-6 py-8 */}
-                    {/* MODAL PER AGGIUNTA INDIRIZZO */}
-                    {isModalAperto && (
-                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                            <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl animate-in fade-in zoom-in duration-200">
-                                <h3 className="text-xl font-bold text-gray-800 mb-4">Nuovo Indirizzo</h3>
-
-                                <form onSubmit={aggiungiIndirizzo} className="space-y-4">
-                                    <div className="grid grid-cols-3 gap-3">
-                                        <div className="col-span-2">
-                                            <label className="block text-xs font-bold text-gray-500 uppercase">Via</label>
-                                            <input required type="text" className="w-full border-gray-200 border p-2 rounded-lg"
-                                                   value={nuovoIndirizzo.via} onChange={e => setNuovoIndirizzo({...nuovoIndirizzo, via: e.target.value})} />
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-bold text-gray-500 uppercase">Civico</label>
-                                            <input required type="text" className="w-full border-gray-200 border p-2 rounded-lg"
-                                                   value={nuovoIndirizzo.civico} onChange={e => setNuovoIndirizzo({...nuovoIndirizzo, civico: e.target.value})} />
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div>
-                                            <label className="block text-xs font-bold text-gray-500 uppercase">Città</label>
-                                            <input required type="text" className="w-full border-gray-200 border p-2 rounded-lg"
-                                                   value={nuovoIndirizzo.citta} onChange={e => setNuovoIndirizzo({...nuovoIndirizzo, citta: e.target.value})} />
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-bold text-gray-500 uppercase">CAP</label>
-                                            <input required type="text" className="w-full border-gray-200 border p-2 rounded-lg"
-                                                   value={nuovoIndirizzo.cap} onChange={e => setNuovoIndirizzo({...nuovoIndirizzo, cap: e.target.value})} />
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-500 uppercase">Provincia (Sigla)</label>
-                                        <input required type="text" maxLength={2} className="w-full border-gray-200 border p-2 rounded-lg uppercase"
-                                               value={nuovoIndirizzo.provincia} onChange={e => setNuovoIndirizzo({...nuovoIndirizzo, provincia: e.target.value})} />
-                                    </div>
-
-                                    <div className="flex gap-3 mt-6">
-                                        <button type="button" onClick={() => setIsModalAperto(false)}
-                                                className="flex-1 py-2 bg-gray-100 text-gray-600 font-bold rounded-lg hover:bg-gray-200 transition-colors">
-                                            Annulla
-                                        </button>
-                                        <button type="submit"
-                                                className="flex-1 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition-colors shadow-md">
-                                            Salva
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
+                            </section>
                         </div>
-                    )}
-                </div> {/* Fine card */}
-            </div>
+                    </div>
+                </div>
+            </main>
+
+            {/* MODAL INDIRIZZO */}
+            <AnimatePresence>
+                {isModalAperto && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsModalAperto(false)} />
+                        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white w-full max-w-lg rounded-4xl shadow-2xl relative z-10 p-8 space-y-6">
+                            <div className="flex justify-between items-center">
+                                <h3 className="text-2xl font-black text-slate-900">Nuovo Indirizzo</h3>
+                                <button onClick={() => setIsModalAperto(false)} className="p-2 rounded-full hover:bg-slate-100"><X /></button>
+                            </div>
+                            <form onSubmit={aggiungiIndirizzo} className="space-y-4">
+                                <div className="grid grid-cols-4 gap-4">
+                                    <input placeholder="Via" required className="col-span-3 p-3 rounded-xl border border-slate-200" value={nuovoIndirizzo.via} onChange={e => setNuovoIndirizzo({...nuovoIndirizzo, via: e.target.value})} />
+                                    <input placeholder="Civico" required className="p-3 rounded-xl border border-slate-200" value={nuovoIndirizzo.civico} onChange={e => setNuovoIndirizzo({...nuovoIndirizzo, civico: e.target.value})} />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <input placeholder="Città" required className="p-3 rounded-xl border border-slate-200" value={nuovoIndirizzo.citta} onChange={e => setNuovoIndirizzo({...nuovoIndirizzo, citta: e.target.value})} />
+                                    <input placeholder="CAP" required className="p-3 rounded-xl border border-slate-200" value={nuovoIndirizzo.cap} onChange={e => setNuovoIndirizzo({...nuovoIndirizzo, cap: e.target.value})} />
+                                </div>
+                                <input placeholder="Provincia (es. MI)" required maxLength={2} className="w-24 p-3 rounded-xl border border-slate-200 uppercase" value={nuovoIndirizzo.provincia} onChange={e => setNuovoIndirizzo({...nuovoIndirizzo, provincia: e.target.value.toUpperCase()})} />
+                                <button type="submit" className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-lg shadow-lg shadow-indigo-200">Salva</button>
+                            </form>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

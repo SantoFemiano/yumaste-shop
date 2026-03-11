@@ -1,11 +1,23 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+    User,
+    Mail,
+    Lock,
+    Phone,
+    Calendar,
+    Fingerprint,
+    ArrowLeft,
+    CheckCircle2,
+    Loader2,
+    AlertCircle
+} from 'lucide-react';
 
 const Registrazione: React.FC = () => {
     const navigate = useNavigate();
 
-    // 1. STATI DEL FORM AGGIORNATI CON IL TUO SWAGGER
     const [formData, setFormData] = useState({
         cf: '',
         nome: '',
@@ -20,7 +32,6 @@ const Registrazione: React.FC = () => {
     const [errore, setErrore] = useState<string | null>(null);
     const [successo, setSuccesso] = useState(false);
 
-    // 2. GESTIONE DELL'INVIO
     const gestisciRegistrazione = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
@@ -28,148 +39,177 @@ const Registrazione: React.FC = () => {
 
         try {
             const url = 'http://localhost:8084/api/auth/register';
-
-            // Invia i dati esattamente come si aspetta Spring Boot
             await axios.post(url, formData);
-
             setSuccesso(true);
-
-            // Dopo 2.5 secondi, rimandiamo l'utente al Login
-            setTimeout(() => {
-                navigate('/login');
-            }, 2500);
-
+            setTimeout(() => navigate('/login'), 2500);
         } catch (error) {
-            console.error("Errore di registrazione:", error);
-
             if (axios.isAxiosError(error) && error.response?.status === 400) {
-                setErrore("Dati non validi, Codice Fiscale o Email forse già in uso.");
+                setErrore("Dati non validi. Il Codice Fiscale o l'Email potrebbero essere già registrati.");
             } else {
-                setErrore("Errore del server. Verifica i dati e riprova.");
+                setErrore("Si è verificato un errore durante la registrazione. Riprova più tardi.");
             }
         } finally {
             setIsLoading(false);
         }
-    }; // <--- AGGIUNTA PARENTESI MANCANTE QUI
+    };
 
-    // 3. GESTIONE CAMBIAMENTO INPUT
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value
-        });
+        const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: name === 'cf' ? value.toUpperCase() : value
+        }));
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4 py-10">
+        <div className="min-h-screen flex items-center justify-center bg-slate-50/50 p-4 py-12 font-sans">
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="max-w-2xl w-full bg-white rounded-4xl shadow-2xl shadow-slate-200 p-8 md:p-12 border border-white relative overflow-hidden"
+            >
+                {/* Decorazione Sfondo */}
+                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full -mr-16 -mt-16 opacity-50" />
 
-            <div className="max-w-xl w-full bg-white rounded-2xl shadow-xl p-8 border border-slate-100">
-                <div className="text-center mb-8">
-                    <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg text-white font-bold text-3xl">
+                <div className="text-center mb-10 relative">
+                    <div className="w-16 h-16 bg-linear-to-br from-indigo-600 to-violet-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl shadow-indigo-200 text-white font-black text-3xl">
                         Y
                     </div>
-                    <h2 className="text-3xl font-extrabold text-slate-900">Crea un account</h2>
-                    <p className="text-slate-500 mt-2">Unisciti a Yumaste e ordina le tue box</p>
+                    <h2 className="text-4xl font-black text-slate-900 tracking-tight">Crea un account</h2>
+                    <p className="text-slate-500 font-medium mt-2">Unisciti alla community di Yumaste</p>
                 </div>
 
-                {successo ? (
-                    <div className="bg-green-50 text-green-800 p-6 rounded-xl text-center font-medium border border-green-200">
-                        <span className="text-4xl block mb-2">🎉</span>
-                        Registrazione completata con successo! <br />
-                        <span className="text-sm font-normal text-green-600 mt-2 block">Ti stiamo reindirizzando al login...</span>
-                    </div>
-                ) : (
-                    <form onSubmit={gestisciRegistrazione} className="space-y-5">
-                        {errore && (
-                            <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm text-center font-medium border border-red-100">
-                                {errore}
-                            </div>
-                        )}
-
-                        {/* RIGA 1: Nome e Cognome */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-1">Nome</label>
-                                <input required type="text" name="nome" value={formData.nome} onChange={handleChange}
-                                       className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none transition-all"
-                                       placeholder="Mario" />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-1">Cognome</label>
-                                <input required type="text" name="cognome" value={formData.cognome} onChange={handleChange}
-                                       className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none transition-all"
-                                       placeholder="Rossi" />
-                            </div>
-                        </div>
-
-                        {/* RIGA 2: Codice Fiscale e Data di Nascita */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-1">Codice Fiscale</label>
-                                <input required type="text" name="cf" value={formData.cf} onChange={handleChange}
-                                       className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none transition-all uppercase"
-                                       placeholder="RSSMRA..." maxLength={16} />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-1">Data di Nascita</label>
-                                <input required type="date" name="dataNascita" value={formData.dataNascita} onChange={handleChange}
-                                       className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none transition-all" />
-                            </div>
-                        </div>
-
-                        {/* RIGA 3: Telefono e Email */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-1">Telefono</label>
-                                <input required type="tel" name="telefono" value={formData.telefono} onChange={handleChange}
-                                       className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none transition-all"
-                                       placeholder="333 1234567" />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-1">Email</label>
-                                <input required type="email" name="email" value={formData.email} onChange={handleChange}
-                                       className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none transition-all"
-                                       placeholder="mario.rossi@email.com" />
-                            </div>
-                        </div>
-
-                        {/* RIGA 4: Password */}
-                        <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-1">Password</label>
-                            <input required type="password" name="password" value={formData.password} onChange={handleChange}
-                                   className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none transition-all"
-                                   placeholder="••••••••" minLength={6} />
-                        </div>
-
-                        <button
-                            type="submit"
-                            disabled={isLoading}
-                            className={`w-full py-3.5 rounded-xl text-white font-bold text-lg shadow-md transition-all mt-4 ${isLoading ? 'bg-indigo-400 cursor-wait' : 'bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98]'}`}
+                <AnimatePresence mode="wait">
+                    {successo ? (
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            className="bg-emerald-50 border border-emerald-100 p-8 rounded-3xl text-center"
                         >
-                            {isLoading ? 'Registrazione in corso...' : 'Registrati'}
-                        </button>
+                            <div className="w-16 h-16 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4 text-white shadow-lg shadow-emerald-200">
+                                <CheckCircle2 className="w-10 h-10" />
+                            </div>
+                            <h3 className="text-2xl font-bold text-emerald-900 mb-2">Benvenuto a bordo!</h3>
+                            <p className="text-emerald-700 font-medium">
+                                Registrazione completata. Ti stiamo portando alla pagina di login...
+                            </p>
+                        </motion.div>
+                    ) : (
+                        <form onSubmit={gestisciRegistrazione} className="space-y-6">
+                            {errore && (
+                                <motion.div
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    className="bg-rose-50 text-rose-600 p-4 rounded-2xl text-sm font-bold border border-rose-100 flex items-center gap-3"
+                                >
+                                    <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                                    {errore}
+                                </motion.div>
+                            )}
 
-                        <div className="text-center text-sm text-slate-500 mt-6 pt-4 border-t border-slate-100">
-                            Hai già un account?{' '}
-                            <Link to="/login" className="text-indigo-600 font-bold hover:underline">
-                                Accedi qui
-                            </Link>
-                        </div>
-                        {/* ---TORNA AL CATALOGO --- */}
-                        <div className="text-center mt-4">
+                            {/* NOME & COGNOME */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Nome</label>
+                                    <div className="relative">
+                                        <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                                        <input required type="text" name="nome" value={formData.nome} onChange={handleChange}
+                                               className="w-full pl-12 pr-4 py-3.5 rounded-2xl border border-slate-100 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-600 outline-none transition-all font-medium"
+                                               placeholder="Mario" />
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Cognome</label>
+                                    <div className="relative">
+                                        <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                                        <input required type="text" name="cognome" value={formData.cognome} onChange={handleChange}
+                                               className="w-full pl-12 pr-4 py-3.5 rounded-2xl border border-slate-100 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-600 outline-none transition-all font-medium"
+                                               placeholder="Rossi" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* CF & DATA NASCITA */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Codice Fiscale</label>
+                                    <div className="relative">
+                                        <Fingerprint className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                                        <input required type="text" name="cf" value={formData.cf} onChange={handleChange}
+                                               className="w-full pl-12 pr-4 py-3.5 rounded-2xl border border-slate-100 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-600 outline-none transition-all font-mono uppercase tracking-widest"
+                                               placeholder="RSSMRA..." maxLength={16} />
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Data di Nascita</label>
+                                    <div className="relative">
+                                        <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                                        <input required type="date" name="dataNascita" value={formData.dataNascita} onChange={handleChange}
+                                               className="w-full pl-12 pr-4 py-3.5 rounded-2xl border border-slate-100 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-600 outline-none transition-all font-medium" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* TELEFONO & EMAIL */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Telefono</label>
+                                    <div className="relative">
+                                        <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                                        <input required type="tel" name="telefono" value={formData.telefono} onChange={handleChange}
+                                               className="w-full pl-12 pr-4 py-3.5 rounded-2xl border border-slate-100 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-600 outline-none transition-all font-medium"
+                                               placeholder="333 1234567" />
+                                    </div>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Email</label>
+                                    <div className="relative">
+                                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                                        <input required type="email" name="email" value={formData.email} onChange={handleChange}
+                                               className="w-full pl-12 pr-4 py-3.5 rounded-2xl border border-slate-100 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-600 outline-none transition-all font-medium"
+                                               placeholder="mario.rossi@email.com" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* PASSWORD */}
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Password</label>
+                                <div className="relative">
+                                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                                    <input required type="password" name="password" value={formData.password} onChange={handleChange}
+                                           className="w-full pl-12 pr-4 py-3.5 rounded-2xl border border-slate-100 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-600 outline-none transition-all font-medium"
+                                           placeholder="••••••••" minLength={6} />
+                                </div>
+                            </div>
+
                             <button
-                                type="button"
-                                onClick={() => navigate('/')}
-                                className="text-slate-400 hover:text-indigo-600 font-medium text-sm transition-colors flex items-center justify-center gap-2 mx-auto"
+                                type="submit"
+                                disabled={isLoading}
+                                className={`w-full py-4 rounded-2xl text-white font-black text-lg shadow-xl shadow-indigo-100 transition-all mt-4 flex items-center justify-center gap-2 ${isLoading ? 'bg-indigo-400 cursor-wait' : 'bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98]'}`}
                             >
-                                <span>&larr;</span> Esplora il catalogo senza registrarti
+                                {isLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : 'Crea Account'}
                             </button>
-                        </div>
-                        {/* ---------------------------------------- */}
 
-                    </form>
-                )}
-            </div>
+                            <div className="flex flex-col items-center gap-4 mt-8 pt-6 border-t border-slate-100">
+                                <p className="text-sm font-medium text-slate-500">
+                                    Hai già un account?{' '}
+                                    <Link to="/login" className="text-indigo-600 font-black hover:underline underline-offset-4">
+                                        Accedi qui
+                                    </Link>
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={() => navigate('/')}
+                                    className="text-slate-400 hover:text-indigo-600 font-bold text-xs transition-colors flex items-center gap-2"
+                                >
+                                    <ArrowLeft className="w-3 h-3" /> Torna al catalogo senza registrarti
+                                </button>
+                            </div>
+                        </form>
+                    )}
+                </AnimatePresence>
+            </motion.div>
         </div>
     );
 };

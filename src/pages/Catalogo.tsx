@@ -1,325 +1,316 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import type { Variants } from 'framer-motion';
+import {
+    Search,
+    ChefHat,
+    ChevronLeft,
+    ChevronRight,
+    Plus,
+    AlertCircle,
+    UtensilsCrossed
+} from 'lucide-react';
+
+// Import componenti shadcn/ui
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+
 import Navbar from '../components/Navbar';
 import type { BoxCatalogo } from '../types/BoxCatalogo';
-// 1. Aggiungiamo useSearchParams
-import { useNavigate, useSearchParams } from 'react-router-dom';
 
 const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null) => void }> = ({ token, setToken }) => {
     const navigate = useNavigate();
-
-    // 2. Inizializziamo useSearchParams per leggere l'URL
     const [searchParams] = useSearchParams();
-
-    // 3. Estraiamo la parola cercata. Se non c'è, è una stringa vuota ""
     const queryRicerca = searchParams.get('search') || "";
 
-    // --- STATI BASE ---
+    // --- STATI ---
     const [boxes, setBoxes] = useState<BoxCatalogo[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [errore, setErrore] = useState<string | null>(null);
-
-    // --- STATI PAGINAZIONE E CATEGORIE ---
     const [paginaAttuale, setPaginaAttuale] = useState(0);
     const [totalePagine, setTotalePagine] = useState(0);
 
     const categorieLista = ["Tutte", "Italiana", "Asiatica", "Vegana", "Proteica", "Messicana"];
     const [categoriaSelezionata, setCategoriaSelezionata] = useState<string>("Tutte");
 
-    // --- EFFETTI ---
-    // 4. Aggiungiamo queryRicerca alle dipendenze: se l'utente cerca qualcosa di nuovo, rifacciamo la chiamata!
-    useEffect(() => {
-        // Reset alla prima pagina quando cambia la ricerca o la categoria
-        setPaginaAttuale(0);
-        scaricaCatalogo(0, categoriaSelezionata, queryRicerca);
-    }, [categoriaSelezionata, queryRicerca]); // Ascolta i cambi di URL e Categoria
-
-    // Ascolta i cambi di pagina
-    useEffect(() => {
-        scaricaCatalogo(paginaAttuale, categoriaSelezionata, queryRicerca);
-    }, [paginaAttuale]);
-
-    // --- FUNZIONI ---
-    const cambiaCategoria = (cat: string) => {
-        setCategoriaSelezionata(cat);
-    };
-
-    // 5. Aggiorniamo la funzione per accettare la variabile 'search'
-    const scaricaCatalogo = async (numeroPagina: number, categoria: string, search: string) => {
+    // --- LOGICA DI DOWNLOAD (Ottimizzata con useCallback) ---
+    const scaricaCatalogo = useCallback(async (numeroPagina: number, categoria: string, search: string) => {
         setIsLoading(true);
         setErrore(null);
-
         try {
             const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
             let url = `http://localhost:8084/api/public/boxes?page=${numeroPagina}&size=8`;
 
-            // Aggiungiamo la categoria se serve
             if (categoria !== "Tutte") {
                 url += `&categoria=${encodeURIComponent(categoria)}`;
             }
-
-            // Aggiungiamo la RICERCA se l'utente ha scritto qualcosa!
             if (search.trim() !== "") {
                 url += `&search=${encodeURIComponent(search)}`;
             }
 
             const response = await axios.get(url, config);
 
-            // GESTIONE STATUS 204 (No Content)
             if (response.status === 204 || !response.data) {
                 setBoxes([]);
                 setTotalePagine(0);
             } else {
-                const datiRicevuti = response.data;
-                if (datiRicevuti && Array.isArray(datiRicevuti.content)) {
-                    setBoxes(datiRicevuti.content);
-                    setTotalePagine(datiRicevuti.totalPages);
-                } else {
-                    setErrore("Formato dati non valido ricevuto dal server.");
-                    setBoxes([]);
-                }
+                const dati = response.data;
+                setBoxes(dati.content || []);
+                setTotalePagine(dati.totalPages || 0);
             }
-        } catch (error) {
-            console.error("Errore durante il download del catalogo:", error);
-            setErrore("Impossibile caricare il catalogo. Verifica la tua connessione o riprova più tardi.");
-            setBoxes([]);
+        } catch (err) {
+            console.error("Errore download catalogo:", err);
+            setErrore("Non siamo riusciti a caricare il menu. Riprova più tardi.");
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [token]);
 
+    // Effetto per reset pagina su cambio filtri
+    useEffect(() => {
+        setPaginaAttuale(0);
+        scaricaCatalogo(0, categoriaSelezionata, queryRicerca);
+    }, [categoriaSelezionata, queryRicerca, scaricaCatalogo]);
+
+    // Effetto per cambio pagina
+    useEffect(() => {
+        scaricaCatalogo(paginaAttuale, categoriaSelezionata, queryRicerca);
+    }, [paginaAttuale, categoriaSelezionata, queryRicerca, scaricaCatalogo]);
+
+    // --- GESTIONE CARRELLO ---
     const aggiungiAlCarrello = async (id: number, nomeBox: string) => {
         if (!token) {
-            alert("Devi effettuare l'accesso per aggiungere prodotti al carrello! 🔒");
             navigate('/login');
             return;
         }
-
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
             const payload = { boxId: id, quantita: 1 };
-            const url = 'http://localhost:8084/api/user/cart/add';
-
-            await axios.post(url, payload, config);
-            alert(`Hai aggiunto "${nomeBox}" al tuo carrello! 🛒`);
-        } catch (error) {
-            console.error("Errore durante l'aggiunta al carrello:", error);
-            alert("Ops! Non è stato possibile aggiungere la box al carrello. Riprova.");
+            await axios.post('http://localhost:8084/api/user/cart/add', payload, config);
+            alert(`"${nomeBox}" aggiunta al carrello! 🛒`);
+        } catch (err) {
+            console.error("Errore aggiunta carrello:", err);
+            alert("Errore nell'aggiunta al carrello.");
         }
     };
 
-    const vaiAllaPaginaPrecedente = () => {
-        if (paginaAttuale > 0) setPaginaAttuale(paginaAttuale - 1);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+    // --- ANIMAZIONI ---
+    const gridVariants: Variants = {
+        hidden: { opacity: 0 },
+        visible: {
+            opacity: 1,
+            transition: { staggerChildren: 0.1 }
+        }
     };
 
-    const vaiAllaPaginaSuccessiva = () => {
-        if (paginaAttuale < totalePagine - 1) setPaginaAttuale(paginaAttuale + 1);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+    const cardVariants: Variants = {
+        hidden: { y: 20, opacity: 0 },
+        visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } }
     };
-
-    // --- COMPONENTI INTERNI ---
-    const SkeletonLoader = () => (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-            {[...Array(8)].map((_, i) => (
-                <div key={i} className="bg-white rounded-2xl p-0 h-[420px] animate-pulse border border-slate-100 shadow-sm flex flex-col overflow-hidden">
-                    <div className="h-48 bg-slate-200"></div>
-                    <div className="p-6 flex flex-col flex-grow gap-4">
-                        <div className="h-4 bg-slate-200 rounded-full w-1/4"></div>
-                        <div className="h-7 bg-slate-200 rounded-lg w-3/4"></div>
-                        <div className="h-4 bg-slate-200 rounded-full w-full mt-2"></div>
-                        <div className="h-4 bg-slate-200 rounded-full w-5/6"></div>
-                        <div className="mt-auto flex justify-between items-end">
-                            <div className="h-8 bg-slate-200 rounded-lg w-1/3"></div>
-                            <div className="h-12 w-12 bg-slate-200 rounded-xl"></div>
-                        </div>
-                    </div>
-                </div>
-            ))}
-        </div>
-    );
 
     return (
-        <div className="min-h-screen bg-slate-50 font-sans text-slate-900 pb-20">
+        <div className="min-h-screen bg-background text-foreground pb-20">
             <Navbar token={token} setToken={setToken} />
 
-            <main className="max-w-7xl mx-auto p-6 lg:p-8">
+            <main className="max-w-7xl mx-auto px-6 lg:px-8 pt-10">
 
-                {/* HEADER CON RISULTATO RICERCA */}
-                <div className="mb-8 text-center md:text-left">
+                {/* HEADER DINAMICO */}
+                <motion.header
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mb-12 text-center md:text-left"
+                >
+                    <div className="flex items-center justify-center md:justify-start gap-3 mb-4">
+                        <ChefHat className="w-10 h-10 text-primary" />
+                        <h2 className="text-4xl font-black tracking-tight uppercase">
+                            {queryRicerca ? "Risultati Ricerca" : "Le Nostre Box"}
+                        </h2>
+                    </div>
                     {queryRicerca ? (
-                        <>
-                            <h2 className="text-3xl font-extrabold text-slate-900 mb-2 tracking-tight">
-                                Risultati per: <span className="text-indigo-600">"{queryRicerca}"</span>
-                            </h2>
-                            <button
-                                onClick={() => navigate('/')}
-                                className="text-sm font-semibold text-slate-500 hover:text-indigo-600 underline"
-                            >
-                                Annulla ricerca e mostra tutto
-                            </button>
-                        </>
-                    ) : (
-                        <>
-                            <h2 className="text-4xl font-extrabold text-slate-900 mb-3 tracking-tight">Esplora le nostre Box</h2>
-                            <p className="text-lg text-slate-600 max-w-2xl">
-                                Ingredienti freschi, ricette deliziose e porzioni perfette. Scegli la tua box e inizia a cucinare come uno chef.
+                        <div className="flex flex-col md:flex-row items-center gap-4">
+                            <p className="text-lg text-muted-foreground">
+                                Risultati per: <span className="font-bold text-primary italic">"{queryRicerca}"</span>
                             </p>
-                        </>
-                    )}
-                </div>
-
-                {/* --- SUB NAVBAR CATEGORIE --- */}
-                <div className="mb-10 -mx-6 px-6 md:mx-0 md:px-0 overflow-x-auto pb-4 hide-scrollbar">
-                    <div className="flex items-center gap-3 w-max">
-                        {categorieLista.map((cat) => (
-                            <button
-                                key={cat}
-                                onClick={() => cambiaCategoria(cat)}
-                                className={`px-5 py-2.5 rounded-full font-bold text-sm whitespace-nowrap transition-all duration-300 ${
-                                    categoriaSelezionata === cat
-                                        ? "bg-slate-900 text-white shadow-md scale-105"
-                                        : "bg-white text-slate-600 border border-slate-200 hover:border-slate-300 hover:bg-slate-100"
-                                }`}
-                            >
-                                {cat}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                {/* --- CONTENUTO (Errori, Loading, Lista) --- */}
-                {errore ? (
-                    <div className="bg-red-50 border-l-4 border-red-500 p-6 rounded-lg shadow-sm flex items-start gap-4">
-                        <span className="text-2xl">⚠️</span>
-                        <div>
-                            <h3 className="text-red-800 font-bold text-lg mb-1">Qualcosa è andato storto</h3>
-                            <p className="text-red-700">{errore}</p>
-                            <button
-                                onClick={() => scaricaCatalogo(paginaAttuale, categoriaSelezionata, queryRicerca)}
-                                className="mt-4 bg-red-100 text-red-700 px-4 py-2 rounded-md font-semibold hover:bg-red-200 transition-colors"
-                            >
-                                Riprova
-                            </button>
+                            <Button variant="link" onClick={() => navigate('/')} className="p-0 h-auto font-bold text-indigo-600">
+                                Mostra tutto il catalogo
+                            </Button>
                         </div>
-                    </div>
-                ) : isLoading ? (
-                    <SkeletonLoader />
-                ) : boxes.length === 0 ? (
-                    <div className="text-center py-20 bg-white rounded-3xl border border-slate-100 shadow-sm flex flex-col items-center">
-                        <span className="text-6xl mb-4">🍽️</span>
-                        <h3 className="text-2xl font-bold text-slate-800 mb-2">Ops! Nessuna box trovata.</h3>
-                        <p className="text-slate-500">
-                            {queryRicerca
-                                ? `Non abbiamo trovato risultati per "${queryRicerca}" in questa categoria.`
-                                : "Non abbiamo box in questa categoria al momento."}
+                    ) : (
+                        <p className="text-lg text-muted-foreground max-w-2xl">
+                            Ingredienti freschi e ricette guidate per cucinare piatti straordinari a casa tua.
                         </p>
-                        {(categoriaSelezionata !== "Tutte" || queryRicerca) && (
-                            <button
-                                onClick={() => {
-                                    setCategoriaSelezionata("Tutte");
-                                    navigate('/');
-                                }}
-                                className="mt-6 px-6 py-2 bg-indigo-50 text-indigo-700 font-bold rounded-lg hover:bg-indigo-100 transition-colors"
-                            >
-                                Torna al menù completo
-                            </button>
-                        )}
-                    </div>
-                ) : (
-                    <>
-                        {/* --- GRIGLIA PRODOTTI --- */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-                            {boxes.map((box) => (
-                                <div
-                                    key={box.id}
-                                    onClick={() => navigate(`/box/${box.id}`)}
-                                    className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col group cursor-pointer"
-                                >
-                                    <div className="relative h-48 bg-slate-100 flex items-center justify-center group-hover:bg-slate-200 transition-colors">
-                                        <span className="text-6xl group-hover:scale-110 transition-transform duration-300">🍲</span>
-                                        {(box.prezzoScontato && box.prezzoScontato < (box.prezzo || 0)) ? (
-                                            <div className="absolute top-4 left-4 bg-rose-500 text-white text-xs font-black px-3 py-1.5 rounded-lg shadow-md uppercase tracking-wider">
-                                                {box.scontoApplicato} OFF
-                                            </div>
-                                        ) : null}
-                                    </div>
+                    )}
+                </motion.header>
 
-                                    <div className="p-6 flex flex-col flex-grow">
-                                        <div className="flex gap-2 mb-3 flex-wrap">
-                                            {(box.categorie || []).map(cat => (
-                                                <span key={cat} className="bg-indigo-50 text-indigo-700 text-[11px] font-bold px-2.5 py-1 rounded-md uppercase tracking-wide">
-                                                    {cat}
-                                                </span>
-                                            ))}
-                                        </div>
+                {/* SUB NAVBAR CATEGORIE */}
+                <div className="mb-12 flex items-center gap-2 overflow-x-auto pb-4 no-scrollbar">
+                    {categorieLista.map((cat) => (
+                        <Button
+                            key={cat}
+                            variant={categoriaSelezionata === cat ? "default" : "secondary"}
+                            onClick={() => setCategoriaSelezionata(cat)}
+                            className="rounded-full font-bold px-6 shadow-sm transition-all hover:scale-105 active:scale-95 whitespace-nowrap"
+                        >
+                            {cat}
+                        </Button>
+                    ))}
+                </div>
 
-                                        <h3 className="text-xl font-bold text-slate-900 mb-2 leading-tight group-hover:text-indigo-600 transition-colors">
-                                            {box.nome}
-                                        </h3>
-                                        <p className="text-slate-500 text-sm line-clamp-2 mb-6 flex-grow leading-relaxed">
-                                            {box.descrizione}
-                                        </p>
-
-                                        <div className="mt-auto flex items-end justify-between border-t border-slate-50 pt-4">
-                                            <div className="flex flex-col">
-                                                {(box.prezzoScontato && box.prezzoScontato < (box.prezzo || 0)) ? (
-                                                    <>
-                                                        <span className="text-xs text-slate-400 line-through font-medium">
-                                                            €{(box.prezzo || 0).toFixed(2)}
-                                                        </span>
-                                                        <span className="text-2xl font-black text-rose-600">
-                                                            €{box.prezzoScontato.toFixed(2)}
-                                                        </span>
-                                                    </>
-                                                ) : (
-                                                    <span className="text-2xl font-black text-slate-900">
-                                                        €{(box.prezzo || 0).toFixed(2)}
-                                                    </span>
-                                                )}
-                                            </div>
-
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    aggiungiAlCarrello(box.id, box.nome);
-                                                }}
-                                                className="bg-slate-900 text-white p-3.5 rounded-xl hover:bg-indigo-600 transition-all shadow-md hover:shadow-lg hover:shadow-indigo-200 active:scale-95 flex items-center justify-center"
-                                                title="Aggiungi al carrello"
-                                            >
-                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                                                </svg>
-                                            </button>
-                                        </div>
+                {/* GRIGLIA PRODOTTI / LOADING / ERRORI */}
+                <AnimatePresence mode="wait">
+                    {errore ? (
+                        <motion.div
+                            key="error"
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                            className="bg-destructive/10 border border-destructive/20 p-10 rounded-3xl text-center"
+                        >
+                            <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
+                            <h3 className="text-xl font-bold text-destructive mb-2">Qualcosa non va</h3>
+                            <p className="text-destructive/80 mb-6">{errore}</p>
+                            <Button onClick={() => scaricaCatalogo(paginaAttuale, categoriaSelezionata, queryRicerca)}>
+                                Riprova ora
+                            </Button>
+                        </motion.div>
+                    ) : isLoading ? (
+                        <div key="loading" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                            {[...Array(8)].map((_, i) => (
+                                <div key={i} className="flex flex-col space-y-4">
+                                    <Skeleton className="h-48 w-full rounded-2xl" />
+                                    <Skeleton className="h-6 w-3/4" />
+                                    <Skeleton className="h-4 w-full" />
+                                    <div className="flex justify-between mt-auto">
+                                        <Skeleton className="h-8 w-20" />
+                                        <Skeleton className="h-10 w-10 rounded-xl" />
                                     </div>
                                 </div>
                             ))}
                         </div>
+                    ) : boxes.length === 0 ? (
+                        <motion.div
+                            key="empty"
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="text-center py-24 bg-card rounded-3xl border-2 border-dashed border-muted"
+                        >
+                            <Search className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                            <h3 className="text-2xl font-bold mb-2">Nessuna box trovata</h3>
+                            <p className="text-muted-foreground mb-8">Prova a cambiare filtri o termine di ricerca.</p>
+                            <Button variant="outline" onClick={() => { setCategoriaSelezionata("Tutte"); navigate('/'); }}>
+                                Torna al catalogo completo
+                            </Button>
+                        </motion.div>
+                    ) : (
+                        <motion.div
+                            key="grid"
+                            variants={gridVariants}
+                            initial="hidden"
+                            animate="visible"
+                            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8"
+                        >
+                            {boxes.map((box) => (
+                                <motion.div key={box.id} variants={cardVariants}>
+                                    <Card
+                                        className="h-full border-none shadow-md hover:shadow-2xl transition-all duration-300 group cursor-pointer bg-card flex flex-col overflow-hidden"
+                                        onClick={() => navigate(`/box/${box.id}`)}
+                                    >
+                                        <CardHeader className="p-0 relative overflow-hidden aspect-video bg-muted flex items-center justify-center">
+                                            {box.immagineUrl ? (
+                                                <img
+                                                    src={box.immagineUrl}
+                                                    alt={box.nome}
+                                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                                />
+                                            ) : (
+                                                <UtensilsCrossed className="w-16 h-16 text-muted-foreground/30 group-hover:scale-110 transition-transform duration-500" />
+                                            )}
 
-                        {/* --- PAGINAZIONE --- */}
-                        {totalePagine > 1 && (
-                            <div className="flex items-center justify-center gap-6 mt-16 mb-8">
-                                <button
-                                    onClick={vaiAllaPaginaPrecedente}
-                                    disabled={paginaAttuale === 0}
-                                    className="px-5 py-2.5 rounded-xl font-semibold transition-all bg-white border border-slate-200 text-slate-700 shadow-sm hover:bg-slate-50 hover:shadow disabled:opacity-40 disabled:hover:shadow-sm disabled:cursor-not-allowed"
-                                >
-                                    &larr; Precedente
-                                </button>
-                                <div className="text-slate-500 font-medium">
-                                    Pagina <span className="text-slate-900 font-bold">{paginaAttuale + 1}</span> di <span className="text-slate-900 font-bold">{totalePagine}</span>
-                                </div>
-                                <button
-                                    onClick={vaiAllaPaginaSuccessiva}
-                                    disabled={paginaAttuale >= totalePagine - 1}
-                                    className="px-5 py-2.5 rounded-xl font-semibold transition-all bg-white border border-slate-200 text-slate-700 shadow-sm hover:bg-slate-50 hover:shadow disabled:opacity-40 disabled:hover:shadow-sm disabled:cursor-not-allowed"
-                                >
-                                    Successiva &rarr;
-                                </button>
-                            </div>
-                        )}
-                    </>
+                                            {/* BADGE SCONTO: Solo se il prezzo scontato è realmente inferiore */}
+                                            {box.prezzoScontato && box.prezzo && box.prezzoScontato < box.prezzo && (
+                                                <Badge className="absolute top-4 left-4 bg-destructive text-destructive-foreground font-black px-3 py-1 shadow-lg">
+                                                    {box.scontoApplicato || 'SALE'}
+                                                </Badge>
+                                            )}
+                                        </CardHeader>
+
+                                        <CardContent className="p-6 flex-grow">
+                                            <div className="flex gap-2 mb-3 flex-wrap">
+                                                {box.categorie?.map(c => (
+                                                    <Badge key={c} variant="secondary" className="text-[10px] uppercase font-bold tracking-wider">
+                                                        {c}
+                                                    </Badge>
+                                                ))}
+                                            </div>
+                                            <h3 className="text-xl font-bold mb-2 line-clamp-1 group-hover:text-primary transition-colors">
+                                                {box.nome}
+                                            </h3>
+                                            <p className="text-muted-foreground text-sm line-clamp-2 leading-relaxed">
+                                                {box.descrizione}
+                                            </p>
+                                        </CardContent>
+
+                                        <CardFooter className="p-6 pt-0 mt-auto flex items-center justify-between border-t border-border/50 bg-muted/5">
+                                            <div className="flex flex-col pt-4">
+                                                {/* LOGICA PREZZO: Rosso solo se c'è sconto reale */}
+                                                {box.prezzoScontato && box.prezzo && box.prezzoScontato < box.prezzo ? (
+                                                    <>
+                                                        <span className="text-xs text-muted-foreground line-through italic">
+                                                            €{box.prezzo.toFixed(2)}
+                                                        </span>
+                                                        <span className="text-2xl font-black text-destructive">
+                                                            €{box.prezzoScontato.toFixed(2)}
+                                                        </span>
+                                                    </>
+                                                ) : (
+                                                    <span className="text-2xl font-black text-foreground">
+                                                        €{(box.prezzo || 0).toFixed(2)}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <Button
+                                                size="icon"
+                                                className="rounded-xl w-12 h-12 shadow-lg hover:rotate-12 transition-all active:scale-90"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    aggiungiAlCarrello(box.id, box.nome);
+                                                }}
+                                            >
+                                                <Plus className="w-6 h-6" />
+                                            </Button>
+                                        </CardFooter>
+                                    </Card>
+                                </motion.div>
+                            ))}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {/* PAGINAZIONE */}
+                {totalePagine > 1 && (
+                    <div className="mt-20 flex flex-col md:flex-row items-center justify-center gap-6">
+                        <Button
+                            variant="outline"
+                            disabled={paginaAttuale === 0}
+                            onClick={() => { setPaginaAttuale(p => p - 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                            className="w-full md:w-auto rounded-full font-bold shadow-sm"
+                        >
+                            <ChevronLeft className="w-4 h-4 mr-2" /> Precedente
+                        </Button>
+                        <div className="text-sm font-medium text-muted-foreground">
+                            Pagina <span className="text-foreground font-black">{paginaAttuale + 1}</span> di {totalePagine}
+                        </div>
+                        <Button
+                            variant="outline"
+                            disabled={paginaAttuale >= totalePagine - 1}
+                            onClick={() => { setPaginaAttuale(p => p + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                            className="w-full md:w-auto rounded-full font-bold shadow-sm"
+                        >
+                            Successiva <ChevronRight className="w-4 h-4 ml-2" />
+                        </Button>
+                    </div>
                 )}
             </main>
         </div>

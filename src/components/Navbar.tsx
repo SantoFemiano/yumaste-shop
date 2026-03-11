@@ -1,10 +1,23 @@
 import React, { useState } from 'react';
 import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+    Search,
+    ShoppingCart,
+    User,
+    ClipboardList,
+    LogOut,
+    X,
+    LogIn,
+    UserPlus
+} from "lucide-react";
+
+// Import componenti shadcn/ui
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 const Navbar: React.FC<{ token: string | null; setToken: (token: string | null) => void }> = ({ token, setToken }) => {
     const navigate = useNavigate();
-
-    // STATO PER LA RICERCA
     const [termineRicerca, setTermineRicerca] = useState('');
 
     const eseguiLogout = () => {
@@ -13,114 +26,129 @@ const Navbar: React.FC<{ token: string | null; setToken: (token: string | null) 
         navigate('/login');
     };
 
-    // FUNZIONE PER ESEGUIRE LA RICERCA
     const gestisciRicerca = (e: React.FormEvent) => {
-        e.preventDefault(); // Evita che la pagina si ricarichi
+        e.preventDefault();
         if (termineRicerca.trim() !== '') {
-            // Se c'è del testo, andiamo al catalogo aggiungendo ?search=... all'URL
             navigate(`/?search=${encodeURIComponent(termineRicerca)}`);
         } else {
-            // Se la ricerca è vuota, torniamo al catalogo normale
             navigate(`/`);
         }
     };
 
     return (
-        <nav className="flex items-center justify-between px-6 py-4 bg-gray-800 text-white shadow-md sticky top-0 z-50">
-
-            {/* Sezione Logo e Titolo (SINISTRA) */}
-            <div
+        <motion.nav
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            className="flex items-center justify-between px-6 py-3 bg-slate-900 border-b border-slate-800 text-white shadow-xl sticky top-0 z-50 backdrop-blur-md bg-opacity-95"
+        >
+            {/* LOGO */}
+            <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={() => navigate('/')}
                 className="flex items-center gap-3 cursor-pointer group shrink-0"
             >
-                <div>
-                    <img
-                        src="src/favIcon/yumaste_icon.svg"
-                        className="w-10 h-10" alt="Logo"
-                    />
-                </div>
-                <h1 className="text-2xl font-bold tracking-wide group-hover:text-gray-300 transition-colors duration-200 hidden sm:block">
-                    Yumaste
+                <img src="src/favIcon/yumaste_icon.svg" className="w-9 h-9" alt="Logo" />
+                <h1 className="text-xl font-black tracking-tighter bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent hidden sm:block">
+                    YUMASTE
                 </h1>
-            </div>
+            </motion.div>
 
-            {/* BARRA DI RICERCA (CENTRO) */}
+            {/* RICERCA CON SHADCN + FRAMER MOTION */}
             <div className="flex-1 max-w-xl mx-4 lg:mx-12">
-                <form onSubmit={gestisciRicerca} className="relative">
-                    <input
+                <form onSubmit={gestisciRicerca} className="relative group">
+                    <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                        <Search className="w-4 h-4 text-slate-400 group-focus-within:text-indigo-400 transition-colors" />
+                    </div>
+                    <Input
                         type="text"
-                        placeholder="Cerca una box..."
+                        placeholder="Cerca una box deliziosa..."
                         value={termineRicerca}
                         onChange={(e) => setTermineRicerca(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 rounded-full border-none focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-700 text-white placeholder-gray-400 transition-all shadow-inner"
+                        className="w-full pl-10 pr-10 bg-slate-800 border-slate-700 text-slate-100 rounded-full focus-visible:ring-indigo-500 focus-visible:ring-offset-0 placeholder:text-slate-500 h-10 transition-all"
                     />
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                        <span className="text-gray-400">🔍</span>
-                    </div>
-                    {/* Tasto "X" per svuotare la ricerca velocemente */}
-                    {termineRicerca && (
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setTermineRicerca('');
-                                navigate('/');
-                            }}
-                            className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-white"
-                        >
-                            ✕
-                        </button>
-                    )}
+                    <AnimatePresence>
+                        {termineRicerca && (
+                            <motion.button
+                                initial={{ opacity: 0, scale: 0.5 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.5 }}
+                                type="button"
+                                onClick={() => { setTermineRicerca(''); navigate('/'); }}
+                                className="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-white"
+                            >
+                                <X className="w-4 h-4" />
+                            </motion.button>
+                        )}
+                    </AnimatePresence>
                 </form>
             </div>
 
-            {/* Sezione Bottoni (DESTRA) */}
-            <div className="flex items-center gap-3 shrink-0">
+            {/* BOTTONI AZIONE */}
+            <div className="flex items-center gap-2 shrink-0">
                 {token ? (
                     <>
-                        <button
+                        <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => navigate('/carrello')}
-                            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-lg shadow-sm transition-colors duration-200 flex items-center gap-2"
+                            className="text-slate-300 hover:text-white hover:bg-slate-800 rounded-full"
                         >
-                            <span className="hidden md:inline">Carrello</span> 🛒
-                        </button>
-                        <button
-                            onClick={() => navigate('/profilo')}
-                            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-lg shadow-sm transition-colors duration-200 hidden md:block"
-                        >
-                            Profilo
-                        </button>
-                        <button
+                            <ShoppingCart className="w-5 h-5 md:mr-2" />
+                            <span className="hidden md:inline font-bold">Carrello</span>
+                        </Button>
+
+                        <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => navigate('/ordini')}
-                            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-lg shadow-sm transition-colors duration-200 hidden md:block"
+                            className="text-slate-300 hover:text-white hover:bg-slate-800 rounded-full hidden md:flex"
                         >
-                            Ordini
-                        </button>
-                        <button
+                            <ClipboardList className="w-5 h-5 mr-2" />
+                            <span className="font-bold">Ordini</span>
+                        </Button>
+
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => navigate('/profilo')}
+                            className="text-slate-300 hover:text-white hover:bg-slate-800 rounded-full hidden md:flex"
+                        >
+                            <User className="w-5 h-5 mr-2" />
+                            <span className="font-bold">Profilo</span>
+                        </Button>
+
+                        <Button
+                            variant="destructive"
+                            size="sm"
                             onClick={eseguiLogout}
-                            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg shadow-sm transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50"
+                            className="rounded-full font-bold ml-2 shadow-lg shadow-red-900/20"
                         >
-                            Esci
-                        </button>
+                            <LogOut className="w-4 h-4 md:mr-2" />
+                            <span className="hidden md:inline">Esci</span>
+                        </Button>
                     </>
                 ) : (
                     <>
-                        <button
+                        <Button
+                            variant="ghost"
                             onClick={() => navigate('/login')}
-                            className="px-4 py-2 bg-transparent border border-gray-400 hover:border-white hover:text-white text-gray-300 font-semibold rounded-lg transition-colors duration-200"
+                            className="text-slate-300 hover:text-white font-bold"
                         >
+                            <LogIn className="w-4 h-4 mr-2" />
                             Accedi
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                             onClick={() => navigate('/registrazione')}
-                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow-sm transition-colors duration-200"
+                            className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-full shadow-lg shadow-indigo-500/20"
                         >
-                            Registrati
-                        </button>
+                            <UserPlus className="w-4 h-4 mr-2" />
+                            Inizia
+                        </Button>
                     </>
                 )}
             </div>
-
-        </nav>
+        </motion.nav>
     );
 };
 

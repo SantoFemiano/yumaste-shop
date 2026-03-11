@@ -1,15 +1,22 @@
-import { useState } from 'react'; // Rimosso l'import di React
+import { useState } from 'react';
 import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import {
+    Mail,
+    Lock,
+    LogIn,
+    ArrowLeft,
+    Loader2,
+    AlertCircle
+} from 'lucide-react';
 
 const Login: React.FC<{ setToken: (token: string | null) => void }> = ({ setToken }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [erroreLogin, setErroreLogin] = useState('');
     const [caricamentoLogin, setCaricamentoLogin] = useState(false);
-    const navigate = useNavigate(); // Hook per navigare tra le pagine programmaticamente
-
-
+    const navigate = useNavigate();
 
     const eseguiLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -25,15 +32,13 @@ const Login: React.FC<{ setToken: (token: string | null) => void }> = ({ setToke
             const jwtGenerato = response.data.token;
             setToken(jwtGenerato);
             localStorage.setItem('jwt_token', jwtGenerato);
-
-            // Dopo il login con successo, navighiamo l'utente verso il catalogo ("/")
             navigate('/');
 
         } catch (err) {
             if (axios.isAxiosError(err) && err.response?.data?.message) {
                 setErroreLogin(err.response.data.message);
             } else {
-                setErroreLogin('Email o password errati. Riprova.');
+                setErroreLogin('Credenziali non valide. Controlla email e password.');
             }
         } finally {
             setCaricamentoLogin(false);
@@ -41,75 +46,103 @@ const Login: React.FC<{ setToken: (token: string | null) => void }> = ({ setToke
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-slate-100 flex items-center justify-center p-4">
-            <div className="bg-white p-8 md:p-10 rounded-2xl shadow-xl max-w-md w-full border border-white">
-                <div className="text-center mb-8">
-                    <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                        <span className="text-white font-bold font-serif text-xl">Y</span>
+        <div className="min-h-screen bg-slate-50/50 flex items-center justify-center p-4 font-sans">
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-white p-8 md:p-12 rounded-4xl shadow-2xl shadow-slate-200 max-w-md w-full border border-white relative overflow-hidden"
+            >
+                {/* Decorazione Sfondo */}
+                <div className="absolute top-0 left-0 w-24 h-24 bg-indigo-50 rounded-full -ml-12 -mt-12 opacity-50" />
+
+                <div className="text-center mb-10 relative">
+                    <div className="w-16 h-16 bg-linear-to-br from-indigo-600 to-violet-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl shadow-indigo-100">
+                        <span className="text-white font-black text-3xl">Y</span>
                     </div>
-                    <h1 className="text-3xl font-extrabold text-slate-800 mb-2">Accedi</h1>
-                    <p className="text-slate-500">Bentornato! Inserisci i tuoi dati.</p>
+                    <h1 className="text-3xl font-black text-slate-900 tracking-tight">Bentornato</h1>
+                    <p className="text-slate-500 font-medium mt-2">Accedi per gestire i tuoi ordini Yumaste</p>
                 </div>
 
                 {erroreLogin && (
-                    <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded mb-6 text-sm flex items-center gap-3">
-                        <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    <motion.div
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className="bg-rose-50 border border-rose-100 text-rose-600 p-4 rounded-2xl mb-6 text-sm font-bold flex items-center gap-3"
+                    >
+                        <AlertCircle className="w-5 h-5 flex-shrink-0" />
                         <p>{erroreLogin}</p>
-                    </div>
+                    </motion.div>
                 )}
 
-                <form onSubmit={eseguiLogin} className="space-y-5">
-                    <div className="space-y-1">
-                        <label className="text-sm font-semibold text-slate-700 block">Email</label>
-                        <input
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                            className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all bg-slate-50 focus:bg-white"
-                            placeholder="tu@email.com"
-                        />
+                <form onSubmit={eseguiLogin} className="space-y-6 relative">
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Email</label>
+                        <div className="relative">
+                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                            <input
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                required
+                                className="w-full pl-12 pr-4 py-3.5 rounded-2xl border border-slate-100 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-600 outline-none transition-all font-medium"
+                                placeholder="tu@email.com"
+                            />
+                        </div>
                     </div>
 
-
-
-                    <div className="space-y-1">
-                        <div className="flex justify-between items-center">
-                            <label className="text-sm font-semibold text-slate-700 block">Password</label>
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Password</label>
+                        <div className="relative">
+                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                            <input
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
+                                className="w-full pl-12 pr-4 py-3.5 rounded-2xl border border-slate-100 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-600 outline-none transition-all font-medium"
+                                placeholder="••••••••"
+                            />
                         </div>
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                            className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all bg-slate-50 focus:bg-white"
-                            placeholder="••••••••"
-                        />
                     </div>
 
                     <button
                         type="submit"
                         disabled={caricamentoLogin}
-                        className={`w-full text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all mt-2 ${
+                        className={`w-full h-14 rounded-2xl text-white font-black text-lg shadow-xl shadow-indigo-100 transition-all flex items-center justify-center gap-2 ${
                             caricamentoLogin
                                 ? 'bg-indigo-400 cursor-wait'
-                                : 'bg-indigo-600 hover:bg-indigo-700 hover:shadow-lg hover:-translate-y-0.5'
+                                : 'bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98]'
                         }`}
                     >
-                        {caricamentoLogin ? 'Accesso in corso...' : 'Entra nel Negozio'}
+                        {caricamentoLogin ? (
+                            <Loader2 className="w-6 h-6 animate-spin" />
+                        ) : (
+                            <>
+                                <LogIn className="w-5 h-5" />
+                                Accedi
+                            </>
+                        )}
                     </button>
 
-                    {/* --- Registrazione --- */}
-                    <div className="text-center text-sm text-slate-500 mt-6 pt-4 border-t border-slate-100">
-                        Non hai ancora un account?{' '}
-                        <Link to="/registrazione" className="text-indigo-600 font-bold hover:underline">
-                            Registrati ora
-                        </Link>
+                    <div className="flex flex-col items-center gap-4 mt-8 pt-6 border-t border-slate-100">
+                        <p className="text-sm font-medium text-slate-500">
+                            Non hai un account?{' '}
+                            <Link to="/registrazione" className="text-indigo-600 font-black hover:underline underline-offset-4">
+                                Registrati ora
+                            </Link>
+                        </p>
+                        <button
+                            type="button"
+                            onClick={() => navigate('/')}
+                            className="text-slate-400 hover:text-indigo-600 font-bold text-xs transition-colors flex items-center gap-2"
+                        >
+                            <ArrowLeft className="w-3 h-3" /> Torna al catalogo
+                        </button>
                     </div>
-                    {/* ------------------------------ */}
                 </form>
-            </div>
+            </motion.div>
         </div>
     );
 };
+
 export default Login;
