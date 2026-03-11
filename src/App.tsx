@@ -58,7 +58,7 @@ export default function App() {
                     element={
                         // Protezione: Se NON ho il token, rimando l'utente al login.
                         // Se ce l'ho, passo sia token che setToken!
-                        token ? <Carrello token={token} setToken={setToken} /> : <Navigate to="/login" />
+                        token ? <Carrello token={token} setToken={setToken} /> : <Navigate to="/" />
                     }
                 />
 
@@ -78,7 +78,7 @@ export default function App() {
                     element={
                         // Protezione: Se NON ho il token, rimando l'utente al login.
                         // Se ce l'ho, passo sia token che setToken!
-                        token ? <Ordini token={token} setToken={setToken} /> : <Navigate to="/login" />
+                        token ? <Ordini token={token} setToken={setToken} /> : <Navigate to="/" />
                     }
                 />
 

@@ -2,39 +2,82 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
 import type { BoxCatalogo } from '../types/BoxCatalogo';
-import { useNavigate } from 'react-router-dom';
+// 1. Aggiungiamo useSearchParams
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null) => void }> = ({ token, setToken }) => {
     const navigate = useNavigate();
 
+    // 2. Inizializziamo useSearchParams per leggere l'URL
+    const [searchParams] = useSearchParams();
+
+    // 3. Estraiamo la parola cercata. Se non c'è, è una stringa vuota ""
+    const queryRicerca = searchParams.get('search') || "";
+
+    // --- STATI BASE ---
     const [boxes, setBoxes] = useState<BoxCatalogo[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [errore, setErrore] = useState<string | null>(null);
 
+    // --- STATI PAGINAZIONE E CATEGORIE ---
     const [paginaAttuale, setPaginaAttuale] = useState(0);
     const [totalePagine, setTotalePagine] = useState(0);
 
+    const categorieLista = ["Tutte", "Italiana", "Asiatica", "Vegana", "Proteica", "Messicana"];
+    const [categoriaSelezionata, setCategoriaSelezionata] = useState<string>("Tutte");
+
+    // --- EFFETTI ---
+    // 4. Aggiungiamo queryRicerca alle dipendenze: se l'utente cerca qualcosa di nuovo, rifacciamo la chiamata!
     useEffect(() => {
-        scaricaCatalogo(paginaAttuale);
+        // Reset alla prima pagina quando cambia la ricerca o la categoria
+        setPaginaAttuale(0);
+        scaricaCatalogo(0, categoriaSelezionata, queryRicerca);
+    }, [categoriaSelezionata, queryRicerca]); // Ascolta i cambi di URL e Categoria
+
+    // Ascolta i cambi di pagina
+    useEffect(() => {
+        scaricaCatalogo(paginaAttuale, categoriaSelezionata, queryRicerca);
     }, [paginaAttuale]);
 
-    const scaricaCatalogo = async (numeroPagina: number) => {
+    // --- FUNZIONI ---
+    const cambiaCategoria = (cat: string) => {
+        setCategoriaSelezionata(cat);
+    };
+
+    // 5. Aggiorniamo la funzione per accettare la variabile 'search'
+    const scaricaCatalogo = async (numeroPagina: number, categoria: string, search: string) => {
         setIsLoading(true);
         setErrore(null);
 
         try {
             const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
-            const url = `http://localhost:8084/api/public/boxes?page=${numeroPagina}&size=8`;
+            let url = `http://localhost:8084/api/public/boxes?page=${numeroPagina}&size=8`;
+
+            // Aggiungiamo la categoria se serve
+            if (categoria !== "Tutte") {
+                url += `&categoria=${encodeURIComponent(categoria)}`;
+            }
+
+            // Aggiungiamo la RICERCA se l'utente ha scritto qualcosa!
+            if (search.trim() !== "") {
+                url += `&search=${encodeURIComponent(search)}`;
+            }
+
             const response = await axios.get(url, config);
 
-            const datiRicevuti = response.data;
-
-            if (datiRicevuti && Array.isArray(datiRicevuti.content)) {
-                setBoxes(datiRicevuti.content);
-                setTotalePagine(datiRicevuti.totalPages);
-            } else {
-                setErrore("Formato dati non valido ricevuto dal server.");
+            // GESTIONE STATUS 204 (No Content)
+            if (response.status === 204 || !response.data) {
                 setBoxes([]);
+                setTotalePagine(0);
+            } else {
+                const datiRicevuti = response.data;
+                if (datiRicevuti && Array.isArray(datiRicevuti.content)) {
+                    setBoxes(datiRicevuti.content);
+                    setTotalePagine(datiRicevuti.totalPages);
+                } else {
+                    setErrore("Formato dati non valido ricevuto dal server.");
+                    setBoxes([]);
+                }
             }
         } catch (error) {
             console.error("Errore durante il download del catalogo:", error);
@@ -75,6 +118,7 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
+    // --- COMPONENTI INTERNI ---
     const SkeletonLoader = () => (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
             {[...Array(8)].map((_, i) => (
@@ -96,16 +140,55 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
     );
 
     return (
-        <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
+        <div className="min-h-screen bg-slate-50 font-sans text-slate-900 pb-20">
             <Navbar token={token} setToken={setToken} />
+
             <main className="max-w-7xl mx-auto p-6 lg:p-8">
-                <div className="mb-10 text-center md:text-left">
-                    <h2 className="text-4xl font-extrabold text-slate-900 mb-3 tracking-tight">Esplora le nostre Box</h2>
-                    <p className="text-lg text-slate-600 max-w-2xl">
-                        Ingredienti freschi, ricette deliziose e porzioni perfette. Scegli la tua box e inizia a cucinare come uno chef.
-                    </p>
+
+                {/* HEADER CON RISULTATO RICERCA */}
+                <div className="mb-8 text-center md:text-left">
+                    {queryRicerca ? (
+                        <>
+                            <h2 className="text-3xl font-extrabold text-slate-900 mb-2 tracking-tight">
+                                Risultati per: <span className="text-indigo-600">"{queryRicerca}"</span>
+                            </h2>
+                            <button
+                                onClick={() => navigate('/')}
+                                className="text-sm font-semibold text-slate-500 hover:text-indigo-600 underline"
+                            >
+                                Annulla ricerca e mostra tutto
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            <h2 className="text-4xl font-extrabold text-slate-900 mb-3 tracking-tight">Esplora le nostre Box</h2>
+                            <p className="text-lg text-slate-600 max-w-2xl">
+                                Ingredienti freschi, ricette deliziose e porzioni perfette. Scegli la tua box e inizia a cucinare come uno chef.
+                            </p>
+                        </>
+                    )}
                 </div>
 
+                {/* --- SUB NAVBAR CATEGORIE --- */}
+                <div className="mb-10 -mx-6 px-6 md:mx-0 md:px-0 overflow-x-auto pb-4 hide-scrollbar">
+                    <div className="flex items-center gap-3 w-max">
+                        {categorieLista.map((cat) => (
+                            <button
+                                key={cat}
+                                onClick={() => cambiaCategoria(cat)}
+                                className={`px-5 py-2.5 rounded-full font-bold text-sm whitespace-nowrap transition-all duration-300 ${
+                                    categoriaSelezionata === cat
+                                        ? "bg-slate-900 text-white shadow-md scale-105"
+                                        : "bg-white text-slate-600 border border-slate-200 hover:border-slate-300 hover:bg-slate-100"
+                                }`}
+                            >
+                                {cat}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* --- CONTENUTO (Errori, Loading, Lista) --- */}
                 {errore ? (
                     <div className="bg-red-50 border-l-4 border-red-500 p-6 rounded-lg shadow-sm flex items-start gap-4">
                         <span className="text-2xl">⚠️</span>
@@ -113,7 +196,7 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
                             <h3 className="text-red-800 font-bold text-lg mb-1">Qualcosa è andato storto</h3>
                             <p className="text-red-700">{errore}</p>
                             <button
-                                onClick={() => scaricaCatalogo(paginaAttuale)}
+                                onClick={() => scaricaCatalogo(paginaAttuale, categoriaSelezionata, queryRicerca)}
                                 className="mt-4 bg-red-100 text-red-700 px-4 py-2 rounded-md font-semibold hover:bg-red-200 transition-colors"
                             >
                                 Riprova
@@ -125,11 +208,27 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
                 ) : boxes.length === 0 ? (
                     <div className="text-center py-20 bg-white rounded-3xl border border-slate-100 shadow-sm flex flex-col items-center">
                         <span className="text-6xl mb-4">🍽️</span>
-                        <h3 className="text-2xl font-bold text-slate-800 mb-2">Il menù è vuoto</h3>
-                        <p className="text-slate-500">Non ci sono box disponibili in questa pagina al momento.</p>
+                        <h3 className="text-2xl font-bold text-slate-800 mb-2">Ops! Nessuna box trovata.</h3>
+                        <p className="text-slate-500">
+                            {queryRicerca
+                                ? `Non abbiamo trovato risultati per "${queryRicerca}" in questa categoria.`
+                                : "Non abbiamo box in questa categoria al momento."}
+                        </p>
+                        {(categoriaSelezionata !== "Tutte" || queryRicerca) && (
+                            <button
+                                onClick={() => {
+                                    setCategoriaSelezionata("Tutte");
+                                    navigate('/');
+                                }}
+                                className="mt-6 px-6 py-2 bg-indigo-50 text-indigo-700 font-bold rounded-lg hover:bg-indigo-100 transition-colors"
+                            >
+                                Torna al menù completo
+                            </button>
+                        )}
                     </div>
                 ) : (
                     <>
+                        {/* --- GRIGLIA PRODOTTI --- */}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
                             {boxes.map((box) => (
                                 <div
@@ -198,6 +297,7 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
                             ))}
                         </div>
 
+                        {/* --- PAGINAZIONE --- */}
                         {totalePagine > 1 && (
                             <div className="flex items-center justify-center gap-6 mt-16 mb-8">
                                 <button

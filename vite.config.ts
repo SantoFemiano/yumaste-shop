@@ -1,11 +1,17 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import path from "path"
+import react from "@vitejs/plugin-react"
+import { defineConfig } from "vite"
 
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+    },
+  },
   server: {
-    port: 9000, // <--- Inserisci qui la porta che preferisci
+    port: 9000,
     strictPort: true,
-    host: true // Importante per Code With Me: permette le connessioni esterne// Opzionale: se la 3000 è occupata, Vite fallisce invece di provare la 3001
+    host: true
   }
 })
