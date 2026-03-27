@@ -31,6 +31,7 @@ interface DettaglioBoxData {
     id: number;
     nome: string;
     categoria: string;
+    porzioni: number; // Aggiunto per gestire le porzioni
     prezzoOriginale: number;
     prezzoScontato: number | null;
     percentualeSconto: number;
@@ -55,6 +56,7 @@ const DettaglioBox: React.FC<{ token: string | null; setToken: (token: string | 
     const [box, setBox] = useState<DettaglioBoxData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [errore, setErrore] = useState<string | null>(null);
+    const [isPerPortion, setIsPerPortion] = useState(false); // Stato per il toggle "Per Porzione"
 
     useEffect(() => {
         const scaricaDettaglio = async () => {
@@ -93,7 +95,19 @@ const DettaglioBox: React.FC<{ token: string | null; setToken: (token: string | 
 
     if (errore || !box) return <div className="min-h-screen flex items-center justify-center text-rose-500 font-bold">{errore || "Box non trovata"}</div>;
 
-    const totaleGrammiMacro = (box.macroTotali?.proteine + box.macroTotali?.carboidrati + box.macroTotali?.grassi) || 1;
+    // Calcolo del divisore basato sullo stato del toggle e sulle porzioni effettive
+    const divisore = (isPerPortion && box.porzioni && box.porzioni > 0) ? box.porzioni : 1;
+
+    // Valori Nutrizionali calcolati dinamicamente
+    const kcal = (box.macroTotali?.chilocalorie || 0) / divisore;
+    const proteine = (box.macroTotali?.proteine || 0) / divisore;
+    const carboidrati = (box.macroTotali?.carboidrati || 0) / divisore;
+    const grassi = (box.macroTotali?.grassi || 0) / divisore;
+    const zuccheri = (box.macroTotali?.zuccheri || 0) / divisore;
+    const fibre = (box.macroTotali?.fibre || 0) / divisore;
+    const sale = (box.macroTotali?.sale || 0) / divisore;
+
+    const totaleGrammiMacro = (proteine + carboidrati + grassi) || 1;
 
     return (
         <div className="min-h-screen bg-slate-50/50 font-sans pb-20">
@@ -155,7 +169,7 @@ const DettaglioBox: React.FC<{ token: string | null; setToken: (token: string | 
                         </div>
                     </div>
 
-                    {/* COLONNA DESTRA: NUTRITION HUB (FIXATO) */}
+                    {/* COLONNA DESTRA: NUTRITION HUB AGGIORNATO */}
                     <div className="lg:col-span-5">
                         <motion.div
                             initial={{ opacity: 0, x: 20 }}
@@ -163,33 +177,53 @@ const DettaglioBox: React.FC<{ token: string | null; setToken: (token: string | 
                             transition={{ delay: 0.2 }}
                             className="bg-white rounded-4xl shadow-xl shadow-slate-200/50 overflow-hidden border border-white"
                         >
-                            {/* Header scuro con overflow-hidden sul padre per evitare il taglio */}
                             <div className="bg-slate-900 p-8 text-white">
                                 <div className="flex items-center justify-between mb-6">
                                     <h3 className="text-xl font-bold flex items-center gap-2">
                                         <Zap className="w-5 h-5 text-yellow-400 fill-yellow-400" />
                                         Nutrition Hub
                                     </h3>
-                                    <div className="text-right">
-                                        <div className="text-4xl font-black">{box.macroTotali?.chilocalorie || 0}</div>
-                                        <div className="text-xs uppercase font-bold text-slate-400">Kcal Totali</div>
+
+                                    {/* Toggle Porzioni/Totale */}
+                                    {box.porzioni && box.porzioni > 1 && (
+                                        <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
+                                            <button
+                                                onClick={() => setIsPerPortion(false)}
+                                                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${!isPerPortion ? 'bg-indigo-500 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
+                                            >
+                                                Totale
+                                            </button>
+                                            <button
+                                                onClick={() => setIsPerPortion(true)}
+                                                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-1 ${isPerPortion ? 'bg-indigo-500 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
+                                            >
+                                                Per Porzione <span className="opacity-75">({box.porzioni})</span>
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="text-right mb-6">
+                                    <div className="text-4xl font-black">{Math.round(kcal)}</div>
+                                    <div className="text-xs uppercase font-bold text-slate-400">
+                                        Kcal {isPerPortion ? 'Per Porzione' : 'Totali'}
                                     </div>
                                 </div>
 
                                 <div className="grid grid-cols-3 gap-4">
                                     <div className="bg-white/10 rounded-2xl p-4 backdrop-blur-sm">
                                         <Beef className="w-4 h-4 text-blue-400 mb-2" />
-                                        <div className="text-xl font-bold">{(box.macroTotali?.proteine || 0).toFixed(1)}g</div>
+                                        <div className="text-xl font-bold">{proteine.toFixed(1)}g</div>
                                         <div className="text-[10px] uppercase font-bold text-slate-400">Proteine</div>
                                     </div>
                                     <div className="bg-white/10 rounded-2xl p-4 backdrop-blur-sm">
                                         <Wheat className="w-4 h-4 text-orange-400 mb-2" />
-                                        <div className="text-xl font-bold">{(box.macroTotali?.carboidrati || 0).toFixed(1)}g</div>
+                                        <div className="text-xl font-bold">{carboidrati.toFixed(1)}g</div>
                                         <div className="text-[10px] uppercase font-bold text-slate-400">Carbo</div>
                                     </div>
                                     <div className="bg-white/10 rounded-2xl p-4 backdrop-blur-sm">
                                         <Droplets className="w-4 h-4 text-yellow-400 mb-2" />
-                                        <div className="text-xl font-bold">{(box.macroTotali?.grassi || 0).toFixed(1)}g</div>
+                                        <div className="text-xl font-bold">{grassi.toFixed(1)}g</div>
                                         <div className="text-[10px] uppercase font-bold text-slate-400">Grassi</div>
                                     </div>
                                 </div>
@@ -201,11 +235,10 @@ const DettaglioBox: React.FC<{ token: string | null; setToken: (token: string | 
                                         <span>Ripartizione Energetica</span>
                                         <span className="text-indigo-600">Bilanciamento Macro</span>
                                     </div>
-                                    {/* Progress Bar Multi-colore */}
                                     <div className="flex h-3 w-full rounded-full overflow-hidden bg-slate-100 shadow-inner">
-                                        <div style={{ width: `${((box.macroTotali?.proteine || 0) / totaleGrammiMacro) * 100}%` }} className="bg-blue-500" />
-                                        <div style={{ width: `${((box.macroTotali?.carboidrati || 0) / totaleGrammiMacro) * 100}%` }} className="bg-orange-500" />
-                                        <div style={{ width: `${((box.macroTotali?.grassi || 0) / totaleGrammiMacro) * 100}%` }} className="bg-yellow-400" />
+                                        <div style={{ width: `${(proteine / totaleGrammiMacro) * 100}%` }} className="bg-blue-500" />
+                                        <div style={{ width: `${(carboidrati / totaleGrammiMacro) * 100}%` }} className="bg-orange-500" />
+                                        <div style={{ width: `${(grassi / totaleGrammiMacro) * 100}%` }} className="bg-yellow-400" />
                                     </div>
                                     <div className="flex justify-between text-[10px] font-black uppercase text-slate-500 px-1">
                                         <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-blue-500" /> PRO</span>
@@ -219,15 +252,15 @@ const DettaglioBox: React.FC<{ token: string | null; setToken: (token: string | 
                                 <div className="grid grid-cols-2 gap-y-4 gap-x-8">
                                     <div className="flex justify-between items-center">
                                         <span className="text-sm font-medium text-slate-500">Zuccheri</span>
-                                        <span className="font-bold text-slate-800">{box.macroTotali?.zuccheri || 0}g</span>
+                                        <span className="font-bold text-slate-800">{zuccheri.toFixed(1)}g</span>
                                     </div>
                                     <div className="flex justify-between items-center">
                                         <span className="text-sm font-medium text-slate-500">Fibre</span>
-                                        <span className="font-bold text-slate-800">{box.macroTotali?.fibre || 0}g</span>
+                                        <span className="font-bold text-slate-800">{fibre.toFixed(1)}g</span>
                                     </div>
                                     <div className="flex justify-between items-center">
                                         <span className="text-sm font-medium text-slate-500">Sale</span>
-                                        <span className="font-bold text-rose-500">{box.macroTotali?.sale || 0}g</span>
+                                        <span className="font-bold text-rose-500">{sale.toFixed(2)}g</span>
                                     </div>
                                 </div>
 
@@ -282,9 +315,6 @@ const DettaglioBox: React.FC<{ token: string | null; setToken: (token: string | 
                                         <span>{ing.grassi}g Grassi</span>
                                         <span className="text-slate-300">•</span>
                                         <span className="flex items-center gap-2 text-rose-600 font-bold text-xs uppercase mb-3">{ing.chilocalorie}Kcal</span>
-
-
-
                                     </div>
                                 </div>
                             </div>
