@@ -34,7 +34,7 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
     const [paginaAttuale, setPaginaAttuale] = useState(0);
     const [totalePagine, setTotalePagine] = useState(0);
 
-    const categorieLista = ["Tutte", "Italiana", "Asiatica", "Vegana", "Proteica", "Messicana"];
+    const categorieLista = ["Tutte", "Vegana", "Carne", "Pesce", "Keto", "SenzaGlutine","Dolci","Panificati","Giapponese","Coreano","MadeInNapoli","Pasta"];
     const [categoriaSelezionata, setCategoriaSelezionata] = useState<string>("Tutte");
 
     // --- LOGICA DI DOWNLOAD (Ottimizzata con useCallback) ---
