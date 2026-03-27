@@ -222,11 +222,12 @@ npm run preview
 
 ---
 
-## 👤 Autore
+## 👤 Autori
 
 **Santo Femiano**
 - GitHub: [@SantoFemiano](https://github.com/SantoFemiano)
-
+  
+**Salvatore Santaniello**
+- GitHub: [@salvsant](https://github.com/salvsant)
 ---
 
-*Readme generato con ❤️ per il progetto Yumaste*
