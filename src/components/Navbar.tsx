@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import logoUrl from '../favIcon/yumaste_icon.svg';
 import {
     Search,
     ShoppingCart,
@@ -48,7 +49,7 @@ const Navbar: React.FC<{ token: string | null; setToken: (token: string | null) 
                 onClick={() => navigate('/')}
                 className="flex items-center gap-3 cursor-pointer group shrink-0"
             >
-                <img src="src/favIcon/yumaste_icon.svg" className="w-9 h-9" alt="Logo" />
+                <img src={logoUrl} className="w-9 h-9" alt="Logo" />
                 <h1 className="text-xl font-black tracking-tighter bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent hidden sm:block">
                     YUMASTE
                 </h1>

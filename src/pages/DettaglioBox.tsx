@@ -136,7 +136,7 @@ const DettaglioBox: React.FC<{ token: string | null; setToken: (token: string | 
                             ) : (
                                 <div className="w-full h-full flex items-center justify-center bg-slate-100 text-8xl">🍲</div>
                             )}
-                            {box.prezzoScontato !== null && (
+                            {box.prezzoScontato && box.prezzoOriginale && box.prezzoScontato < box.prezzoOriginale &&  (
                                 <div className="absolute top-8 left-8 bg-rose-500 text-white px-6 py-2 text-lg font-black rounded-2xl shadow-xl">
                                     -{box.percentualeSconto}%
                                 </div>
@@ -150,20 +150,29 @@ const DettaglioBox: React.FC<{ token: string | null; setToken: (token: string | 
                             <h1 className="text-5xl font-black tracking-tight text-slate-900 leading-[1.1]">{box.nome}</h1>
 
                             <div className="flex flex-wrap items-center gap-8 py-4">
-                                {box.prezzoScontato !== null ? (
+                                {/* Blocco Prezzi */}
+                                {(box?.prezzoScontato ?? 0) < (box?.prezzoOriginale ?? 0) ? (
                                     <div className="flex items-baseline gap-3">
-                                        <span className="text-5xl font-black text-rose-600">€{box.prezzoScontato.toFixed(2)}</span>
-                                        <span className="text-xl text-slate-400 line-through">€{box.prezzoOriginale.toFixed(2)}</span>
+                                <span className="text-5xl font-black text-rose-600">
+                                 €{Number(box?.prezzoScontato ?? 0).toFixed(2)}
+                                      </span>
+                                           <span className="text-xl text-slate-400 line-through">
+                                            €{Number(box?.prezzoOriginale ?? 0).toFixed(2)}
+                                             </span>
                                     </div>
                                 ) : (
-                                    <span className="text-5xl font-black text-slate-900">€{box.prezzoOriginale.toFixed(2)}</span>
+                                    <span className="text-5xl font-black text-slate-900">
+                                 €{Number(box?.prezzoOriginale ?? 0).toFixed(2)}
+                                  </span>
                                 )}
 
+                                {/* BOTTONE aggiungi al carrello */}
                                 <button
                                     onClick={aggiungiAlCarrello}
-                                    className="h-16 px-10 rounded-2xl bg-slate-900 text-white text-lg font-bold shadow-xl hover:bg-indigo-600 hover:scale-105 transition-all flex items-center"
+                                    className="ml-auto h-16 px-10 rounded-2xl bg-slate-900 text-white text-lg font-bold shadow-xl hover:bg-indigo-600 hover:scale-105 transition-all flex items-center"
                                 >
-                                    <ShoppingCart className="mr-3 w-6 h-6" /> Aggiungi al carrello
+                                    <ShoppingCart className="mr-3 w-6 h-6" />
+                                    Aggiungi al carrello
                                 </button>
                             </div>
                         </div>
