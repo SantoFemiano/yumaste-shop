@@ -15,6 +15,7 @@ Frontend dello shop dedicato ai clienti della piattaforma **Yumaste** — un'app
 ## 📋 Indice
 
 - [Panoramica](#-panoramica)
+- [Screenshot](#-screenshot)
 - [Stack Tecnologico](#-stack-tecnologico)
 - [Struttura del Progetto](#-struttura-del-progetto)
 - [Pagine e Routing](#-pagine-e-routing)
@@ -36,6 +37,34 @@ Yumaste Shop è la SPA (Single Page Application) client-facing della piattaforma
 - Effettuare **ordini** e consultare lo storico
 - Gestire il proprio **profilo** e gli indirizzi di consegna
 - **Registrarsi** e fare il **login** con autenticazione JWT
+
+---
+
+## 📸 Screenshot
+
+### 🔐 Login
+![Login Interface](Login_Interface.png)
+
+### 📦 Catalogo Box
+![Catalogo Box](Catalogo_Box.png)
+
+### 🏷️ Catalogo Box per Categoria
+![Catalogo Box per Categoria](Catalogo_Box_By_Category.png)
+
+### 📊 Dettaglio Box
+![Dettaglio Box](Box.png)
+
+### 🧉 Composizione Box
+![Composizione Box](Composizione_Box.png)
+
+### 🛒 Carrello Cliente
+![Carrello Cliente](Carrello_Cliente.png)
+
+### 🗒️ Ordini Cliente
+![Ordini Cliente](Ordini_Clienti.png)
+
+### 👤 Scheda Cliente
+![Scheda Cliente](Scheda_Cliente.png)
 
 ---
 
@@ -230,4 +259,3 @@ npm run preview
 **Salvatore Santaniello**
 - GitHub: [@salvsant](https://github.com/salvsant)
 ---
-
