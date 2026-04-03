@@ -31,6 +31,7 @@ const Carrello: React.FC<{ token: string | null; setToken: (token: string | null
     const [totaleBackend, setTotaleBackend] = useState<number>(0);
     const [isLoading, setIsLoading] = useState(true);
     const [errore, setErrore] = useState<string | null>(null);
+    const BASE_URL = import.meta.env.VITE_API_URL;
 
     // --- STATI CHECKOUT ---
     const [indirizzi, setIndirizzi] = useState<any[]>([]);
@@ -46,7 +47,7 @@ const Carrello: React.FC<{ token: string | null; setToken: (token: string | null
             const config = { headers: { Authorization: `Bearer ${token}` } };
 
             // 1. Scarichiamo il Carrello
-            const resCart = await axios.get('http://localhost:8084/api/user/cart', config);
+            const resCart = await axios.get(`${BASE_URL}/api/user/cart`, config);
             const dati = resCart.data;
 
             if (dati && Array.isArray(dati.items)) {
@@ -59,7 +60,7 @@ const Carrello: React.FC<{ token: string | null; setToken: (token: string | null
 
             // 2. Scarichiamo gli Indirizzi (solo al caricamento iniziale)
             if (isInitialLoad) {
-                const resInd = await axios.get('http://localhost:8084/api/user/indirizzi', config);
+                const resInd = await axios.get('${BASE_URL}/api/user/indirizzi', config);
                 setIndirizzi(resInd.data);
 
                 if (resInd.data.length > 0) {
@@ -85,7 +86,7 @@ const Carrello: React.FC<{ token: string | null; setToken: (token: string | null
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
             const payload = { boxId: boxId, quantita: nuovaQuantita };
-            await axios.put('http://localhost:8084/api/user/cart/update', payload, config);
+            await axios.put('${BASE_URL}/api/user/cart/update', payload, config);
             scaricaDati(false);
         } catch (error) {
             console.error("Errore aggiornamento quantità:", error);
@@ -96,7 +97,7 @@ const Carrello: React.FC<{ token: string | null; setToken: (token: string | null
     const rimuoviDalCarrello = async (boxId: number) => {
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            await axios.delete(`http://localhost:8084/api/user/cart/remove/${boxId}`, config);
+            await axios.delete(`${BASE_URL}/api/user/cart/remove/${boxId}`, config);
             scaricaDati(false);
         } catch (error) {
             console.error("Errore rimozione prodotto:", error);
@@ -119,7 +120,7 @@ const Carrello: React.FC<{ token: string | null; setToken: (token: string | null
                 metodoPagamento: "CARTA_DI_CREDITO"
             };
 
-            const response = await axios.post('http://localhost:8084/api/user/checkout', payload, config);
+            const response = await axios.post('${BASE_URL}/api/user/checkout', payload, config);
             window.alert(`Ordine confermato! Codice: ${response.data.codiceOrdine}`);
             navigate('/');
         } catch (error) {

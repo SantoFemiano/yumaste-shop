@@ -17,6 +17,7 @@ const Login: React.FC<{ setToken: (token: string | null) => void }> = ({ setToke
     const [erroreLogin, setErroreLogin] = useState('');
     const [caricamentoLogin, setCaricamentoLogin] = useState(false);
     const navigate = useNavigate();
+    const BASE_URL = import.meta.env.VITE_API_URL;
 
     const eseguiLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -24,7 +25,7 @@ const Login: React.FC<{ setToken: (token: string | null) => void }> = ({ setToke
         setErroreLogin('');
 
         try {
-            const response = await axios.post('http://localhost:8084/api/auth/login', {
+            const response = await axios.post(`${BASE_URL}/api/auth/login`, {
                 email: email,
                 password: password
             });

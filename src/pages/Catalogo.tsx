@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-
+const BASE_URL = import.meta.env.VITE_API_URL;
 import Navbar from '../components/Navbar';
 import type { BoxCatalogo } from '../types/BoxCatalogo';
 
@@ -43,7 +43,7 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
         setErrore(null);
         try {
             const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
-            let url = `http://localhost:8084/api/public/boxes?page=${numeroPagina}&size=8`;
+            let url = `${BASE_URL}/api/public/boxes?page=${numeroPagina}&size=8`;
 
             if (categoria !== "Tutte") {
                 url += `&categoria=${encodeURIComponent(categoria)}`;
@@ -90,7 +90,7 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
             const payload = { boxId: id, quantita: 1 };
-            await axios.post('http://localhost:8084/api/user/cart/add', payload, config);
+            await axios.post('${BASE_URL}/api/user/cart/add', payload, config);
             alert(`"${nomeBox}" aggiunta al carrello! 🛒`);
         } catch (err) {
             console.error("Errore aggiunta carrello:", err);

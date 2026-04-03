@@ -52,7 +52,7 @@ interface DettaglioBoxData {
 const DettaglioBox: React.FC<{ token: string | null; setToken: (token: string | null) => void }> = ({ token, setToken }) => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-
+    const BASE_URL = import.meta.env.VITE_API_URL;
     const [box, setBox] = useState<DettaglioBoxData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [errore, setErrore] = useState<string | null>(null);
@@ -61,7 +61,7 @@ const DettaglioBox: React.FC<{ token: string | null; setToken: (token: string | 
     useEffect(() => {
         const scaricaDettaglio = async () => {
             try {
-                const url = `http://localhost:8084/api/public/box/detail/${id}`;
+                const url = `${BASE_URL}/api/public/box/detail/${id}`;
                 const response = await axios.get(url);
                 setBox(response.data);
             } catch {
@@ -80,7 +80,7 @@ const DettaglioBox: React.FC<{ token: string | null; setToken: (token: string | 
         }
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            await axios.post('http://localhost:8084/api/user/cart/add', { boxId: Number(id), quantita: 1 }, config);
+            await axios.post('${BASE_URL}/api/user/cart/add', { boxId: Number(id), quantita: 1 }, config);
             window.alert("Aggiunto al carrello! 🛒");
         } catch {
             window.alert("Errore nell'aggiunta al carrello.");

@@ -62,12 +62,13 @@ const Ordini: React.FC<{ token: string | null; setToken: (token: string | null) 
     const [ordineEspanso, setOrdineEspanso] = useState<number | null>(null);
     const [dettagliOrdine, setDettagliOrdine] = useState<OrdiniDettagliDTO[]>([]);
     const [isLoadingDettagli, setIsLoadingDettagli] = useState(false);
+    const BASE_URL = import.meta.env.VITE_API_URL;
 
     useEffect(() => {
         const scaricaOrdini = async () => {
             try {
                 const config = { headers: { Authorization: `Bearer ${token}` } };
-                const response = await axios.get('http://localhost:8084/api/user/ordini', config);
+                const response = await axios.get(`${BASE_URL}/api/user/ordini`, config);
                 setOrdini(response.data);
             } catch (error) {
                 console.error("Errore caricamento ordini:", error);
@@ -89,7 +90,7 @@ const Ordini: React.FC<{ token: string | null; setToken: (token: string | null) 
 
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            const url = `http://localhost:8084/api/user/ordine/${idOrdine}/dettagli`;
+            const url = `${BASE_URL}/api/user/ordine/${idOrdine}/dettagli`;
             const response = await axios.get(url, config);
             setDettagliOrdine(response.data);
         } catch (error) {

@@ -39,7 +39,7 @@ const Profilo: React.FC<{ token: string | null; setToken: (token: string | null)
     const [isLoading, setIsLoading] = useState(true);
     const [errore, setErrore] = useState<string | null>(null);
     const [indirizzi, setIndirizzi] = useState<Indirizzo[]>([]);
-
+    const BASE_URL = import.meta.env.VITE_API_URL;
     const [isEditingProfile, setIsEditingProfile] = useState(false);
     const [datiModifica, setDatiModifica] = useState<DatiUtente | null>(null);
     const [isModalAperto, setIsModalAperto] = useState(false);
@@ -54,8 +54,8 @@ const Profilo: React.FC<{ token: string | null; setToken: (token: string | null)
             try {
                 const config = { headers: { Authorization: `Bearer ${token}` } };
                 const [resProfilo, resIndirizzi] = await Promise.all([
-                    axios.get('http://localhost:8084/api/user/profile', config),
-                    axios.get('http://localhost:8084/api/user/indirizzi', config)
+                    axios.get(`${BASE_URL}/api/user/profile`, config),
+                    axios.get('${BASE_URL}/api/user/indirizzi', config)
                 ]);
                 setUtente(resProfilo.data);
                 setIndirizzi(resIndirizzi.data);
@@ -77,7 +77,7 @@ const Profilo: React.FC<{ token: string | null; setToken: (token: string | null)
 
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            const response = await axios.put('http://localhost:8084/api/user/update/profilo', datiModifica, config);
+            const response = await axios.put('${BASE_URL}/api/user/update/profilo', datiModifica, config);
             if (emailCambiata) {
                 window.alert("Email aggiornata! Effettua di nuovo il login.");
                 setToken(null);
@@ -101,7 +101,7 @@ const Profilo: React.FC<{ token: string | null; setToken: (token: string | null)
         setIsPasswordLoading(true);
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            await axios.put('http://localhost:8084/api/user/update/profilo/password', {
+            await axios.put('${BASE_URL}/api/user/update/profilo/password', {
                 vecchiaPassword: passwordData.vecchiaPassword,
                 nuovaPassword: passwordData.nuovaPassword
             }, config);
@@ -119,7 +119,7 @@ const Profilo: React.FC<{ token: string | null; setToken: (token: string | null)
         e.preventDefault();
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            const response = await axios.post('http://localhost:8084/api/user/insert/indirizzo', nuovoIndirizzo, config);
+            const response = await axios.post('${BASE_URL}/api/user/insert/indirizzo', nuovoIndirizzo, config);
             setIndirizzi([...indirizzi, response.data]);
             setIsModalAperto(false);
             setNuovoIndirizzo({ via: '', civico: '', citta: '', cap: '', provincia: '', note: '' });

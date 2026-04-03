@@ -31,6 +31,7 @@ const Registrazione: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [errore, setErrore] = useState<string | null>(null);
     const [successo, setSuccesso] = useState(false);
+    const BASE_URL = import.meta.env.VITE_API_URL;
 
     const gestisciRegistrazione = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -38,7 +39,7 @@ const Registrazione: React.FC = () => {
         setErrore(null);
 
         try {
-            const url = 'http://localhost:8084/api/auth/register';
+            const url = `${BASE_URL}/api/auth/register`;
             await axios.post(url, formData);
             setSuccesso(true);
             setTimeout(() => navigate('/login'), 2500);
