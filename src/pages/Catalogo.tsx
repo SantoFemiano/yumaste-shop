@@ -90,7 +90,7 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
             const payload = { boxId: id, quantita: 1 };
-            await axios.post('${BASE_URL}/api/user/cart/add', payload, config);
+            await axios.post(`${BASE_URL}/api/user/cart/add`, payload, config);
             alert(`"${nomeBox}" aggiunta al carrello! 🛒`);
         } catch (err) {
             console.error("Errore aggiunta carrello:", err);

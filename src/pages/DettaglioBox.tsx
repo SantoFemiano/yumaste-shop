@@ -80,7 +80,7 @@ const DettaglioBox: React.FC<{ token: string | null; setToken: (token: string | 
         }
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            await axios.post('${BASE_URL}/api/user/cart/add', { boxId: Number(id), quantita: 1 }, config);
+            await axios.post(`${BASE_URL}/api/user/cart/add`, { boxId: Number(id), quantita: 1 }, config);
             window.alert("Aggiunto al carrello! 🛒");
         } catch {
             window.alert("Errore nell'aggiunta al carrello.");

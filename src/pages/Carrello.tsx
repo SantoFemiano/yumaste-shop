@@ -60,7 +60,7 @@ const Carrello: React.FC<{ token: string | null; setToken: (token: string | null
 
             // 2. Scarichiamo gli Indirizzi (solo al caricamento iniziale)
             if (isInitialLoad) {
-                const resInd = await axios.get('${BASE_URL}/api/user/indirizzi', config);
+                const resInd = await axios.get(`${BASE_URL}/api/user/indirizzi`, config);
                 setIndirizzi(resInd.data);
 
                 if (resInd.data.length > 0) {
@@ -86,7 +86,7 @@ const Carrello: React.FC<{ token: string | null; setToken: (token: string | null
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
             const payload = { boxId: boxId, quantita: nuovaQuantita };
-            await axios.put('${BASE_URL}/api/user/cart/update', payload, config);
+            await axios.put(`${BASE_URL}/api/user/cart/update`, payload, config);
             scaricaDati(false);
         } catch (error) {
             console.error("Errore aggiornamento quantità:", error);
@@ -120,7 +120,7 @@ const Carrello: React.FC<{ token: string | null; setToken: (token: string | null
                 metodoPagamento: "CARTA_DI_CREDITO"
             };
 
-            const response = await axios.post('${BASE_URL}/api/user/checkout', payload, config);
+            const response = await axios.post(`${BASE_URL}/api/user/checkout`, payload, config);
             window.alert(`Ordine confermato! Codice: ${response.data.codiceOrdine}`);
             navigate('/');
         } catch (error) {
