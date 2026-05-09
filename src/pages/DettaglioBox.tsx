@@ -11,7 +11,8 @@ import {
     Droplets,
     AlertTriangle,
     ListChecks,
-    Loader2
+    Loader2,
+    Sparkles // <-- Aggiunta l'icona Sparkles per l'IA
 } from 'lucide-react';
 
 import Navbar from '../components/Navbar';
@@ -31,7 +32,7 @@ interface DettaglioBoxData {
     id: number;
     nome: string;
     categoria: string;
-    porzioni: number; // Aggiunto per gestire le porzioni
+    porzioni: number;
     prezzoOriginale: number;
     prezzoScontato: number | null;
     percentualeSconto: number;
@@ -53,16 +54,21 @@ const DettaglioBox: React.FC<{ token: string | null; setToken: (token: string | 
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const BASE_URL = import.meta.env.VITE_API_URL;
+
+    // Stati per la Box
     const [box, setBox] = useState<DettaglioBoxData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [errore, setErrore] = useState<string | null>(null);
-    const [isPerPortion, setIsPerPortion] = useState(false); // Stato per il toggle "Per Porzione"
+    const [isPerPortion, setIsPerPortion] = useState(false);
+
+    // --- NUOVI STATI PER L'IA ---
+    const [descrizioneAi, setDescrizioneAi] = useState<string | null>(null);
+    const [isLoadingDesc, setIsLoadingDesc] = useState(false);
 
     useEffect(() => {
         const scaricaDettaglio = async () => {
             try {
-                const url = `${BASE_URL}/api/public/box/detail/${id}`;
-                const response = await axios.get(url);
+                const response = await axios.get(`${BASE_URL}/api/public/box/detail/${id}`);
                 setBox(response.data);
             } catch {
                 setErrore("Impossibile caricare i dettagli della box.");
@@ -70,8 +76,28 @@ const DettaglioBox: React.FC<{ token: string | null; setToken: (token: string | 
                 setIsLoading(false);
             }
         };
-        if (id) void scaricaDettaglio();
-    }, [id]);
+
+        // --- NUOVA FUNZIONE PER SCARICARE LA DESCRIZIONE IA ---
+        const scaricaDescrizioneIA = async () => {
+            setIsLoadingDesc(true);
+            try {
+                // Assicurati che questo endpoint sia accessibile pubblicamente (PublicController)
+                // Se è in AdminController richiederà il token di un Admin!
+                const response = await axios.get(`${BASE_URL}/api/public/box/${id}/generate-description`);
+                setDescrizioneAi(response.data);
+            } catch (error) {
+                console.error("Errore nel caricamento della descrizione AI", error);
+                setDescrizioneAi("Una deliziosa box pensata per i tuoi pasti migliori."); // Fallback
+            } finally {
+                setIsLoadingDesc(false);
+            }
+        };
+
+        if (id) {
+            void scaricaDettaglio();
+            void scaricaDescrizioneIA(); // Lanciamo la chiamata IA in parallelo
+        }
+    }, [id, BASE_URL]);
 
     const aggiungiAlCarrello = async () => {
         if (!token) {
@@ -95,10 +121,8 @@ const DettaglioBox: React.FC<{ token: string | null; setToken: (token: string | 
 
     if (errore || !box) return <div className="min-h-screen flex items-center justify-center text-rose-500 font-bold">{errore || "Box non trovata"}</div>;
 
-    // Calcolo del divisore basato sullo stato del toggle e sulle porzioni effettive
     const divisore = (isPerPortion && box.porzioni && box.porzioni > 0) ? box.porzioni : 1;
 
-    // Valori Nutrizionali calcolati dinamicamente
     const kcal = (box.macroTotali?.chilocalorie || 0) / divisore;
     const proteine = (box.macroTotali?.proteine || 0) / divisore;
     const carboidrati = (box.macroTotali?.carboidrati || 0) / divisore;
@@ -124,7 +148,7 @@ const DettaglioBox: React.FC<{ token: string | null; setToken: (token: string | 
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
 
-                    {/* COLONNA SINISTRA: MEDIA & INFO ACQUISTO */}
+                    {/* COLONNA SINISTRA */}
                     <div className="lg:col-span-7">
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95 }}
@@ -149,24 +173,47 @@ const DettaglioBox: React.FC<{ token: string | null; setToken: (token: string | 
                             </span>
                             <h1 className="text-5xl font-black tracking-tight text-slate-900 leading-[1.1]">{box.nome}</h1>
 
+                            {/* --- BOX DESCRIZIONE IA --- */}
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                className="relative bg-indigo-50/50 border border-indigo-100 rounded-3xl p-6 mt-4"
+                            >
+                                <div className="flex items-center gap-2 mb-3 text-indigo-600">
+                                    <Sparkles className="w-5 h-5" />
+                                    <span className="text-xs font-black uppercase tracking-wider">Chef AI dice:</span>
+                                </div>
+
+                                {isLoadingDesc ? (
+                                    <div className="animate-pulse space-y-2">
+                                        <div className="h-4 bg-indigo-100 rounded w-full"></div>
+                                        <div className="h-4 bg-indigo-100 rounded w-5/6"></div>
+                                        <div className="h-4 bg-indigo-100 rounded w-4/6"></div>
+                                    </div>
+                                ) : (
+                                    <p className="text-lg text-slate-700 leading-relaxed font-medium italic">
+                                        "{descrizioneAi}"
+                                    </p>
+                                )}
+                            </motion.div>
+                            {/* -------------------------- */}
+
                             <div className="flex flex-wrap items-center gap-8 py-4">
-                                {/* Blocco Prezzi */}
                                 {(box?.prezzoScontato ?? 0) < (box?.prezzoOriginale ?? 0) ? (
                                     <div className="flex items-baseline gap-3">
-                                <span className="text-5xl font-black text-rose-600">
-                                 €{Number(box?.prezzoScontato ?? 0).toFixed(2)}
-                                      </span>
-                                           <span className="text-xl text-slate-400 line-through">
+                                        <span className="text-5xl font-black text-rose-600">
+                                            €{Number(box?.prezzoScontato ?? 0).toFixed(2)}
+                                        </span>
+                                        <span className="text-xl text-slate-400 line-through">
                                             €{Number(box?.prezzoOriginale ?? 0).toFixed(2)}
-                                             </span>
+                                        </span>
                                     </div>
                                 ) : (
                                     <span className="text-5xl font-black text-slate-900">
-                                 €{Number(box?.prezzoOriginale ?? 0).toFixed(2)}
-                                  </span>
+                                        €{Number(box?.prezzoOriginale ?? 0).toFixed(2)}
+                                    </span>
                                 )}
 
-                                {/* BOTTONE aggiungi al carrello */}
                                 <button
                                     onClick={aggiungiAlCarrello}
                                     className="ml-auto h-16 px-10 rounded-2xl bg-slate-900 text-white text-lg font-bold shadow-xl hover:bg-indigo-600 hover:scale-105 transition-all flex items-center"
@@ -178,7 +225,7 @@ const DettaglioBox: React.FC<{ token: string | null; setToken: (token: string | 
                         </div>
                     </div>
 
-                    {/* COLONNA DESTRA: NUTRITION HUB AGGIORNATO */}
+                    {/* COLONNA DESTRA: NUTRITION HUB (invariata) */}
                     <div className="lg:col-span-5">
                         <motion.div
                             initial={{ opacity: 0, x: 20 }}
@@ -193,7 +240,6 @@ const DettaglioBox: React.FC<{ token: string | null; setToken: (token: string | 
                                         Nutrition Hub
                                     </h3>
 
-                                    {/* Toggle Porzioni/Totale */}
                                     {box.porzioni && box.porzioni > 1 && (
                                         <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
                                             <button
@@ -292,7 +338,7 @@ const DettaglioBox: React.FC<{ token: string | null; setToken: (token: string | 
                     </div>
                 </div>
 
-                {/* SEZIONE INGREDIENTI */}
+                {/* SEZIONE INGREDIENTI (invariata) */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
