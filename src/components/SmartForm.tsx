@@ -10,14 +10,14 @@ interface SmartFormProps {
     onClose?: () => void;
 }
 
-// Interfaccia per mappare l'oggetto che arriva dal backend
 interface AiResult {
     boxId: number | null;
     messaggio: string;
     nomeBox: string;
 }
 
-const SmartForm: React.FC<SmartFormProps> = () => {
+// CORREZIONE 1: Aggiunto { onClose } qui tra le parentesi
+const SmartForm: React.FC<SmartFormProps> = ({ onClose }) => {
     const navigate = useNavigate();
     const BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -130,11 +130,11 @@ const SmartForm: React.FC<SmartFormProps> = () => {
                         <p className="text-indigo-900 font-medium italic">"{aiResult.messaggio}"</p>
                     </div>
 
-                    {/* Se l'AI ha trovato un ID valido lo manda alla Box, altrimenti fallback al Catalogo */}
                     {aiResult.boxId ? (
                         <Button
                             onClick={() => {
                                 navigate(`/box/${aiResult.boxId}`);
+                                // CORREZIONE 2: onClose con la 'C' maiuscola
                                 if(onClose) onClose();
                             }}
                             className="w-full py-6 rounded-xl bg-indigo-600 hover:bg-indigo-700"
@@ -145,6 +145,7 @@ const SmartForm: React.FC<SmartFormProps> = () => {
                         <Button
                             onClick={() => {
                                 navigate(`/catalogo`);
+                                // CORREZIONE 2: onClose con la 'C' maiuscola
                                 if(onClose) onClose();
                             }}
                             className="w-full py-6 rounded-xl bg-indigo-600 hover:bg-indigo-700"
