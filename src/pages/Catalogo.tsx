@@ -11,8 +11,8 @@ import {
     Plus,
     AlertCircle,
     UtensilsCrossed,
-    BrainCircuit,
-    Sparkles
+    BrainCircuit, // <-- Aggiunto
+    Sparkles      // <-- Aggiunto
 } from 'lucide-react';
 
 // Import componenti shadcn/ui
@@ -23,6 +23,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 const BASE_URL = import.meta.env.VITE_API_URL;
 import Navbar from '../components/Navbar';
 import type { BoxCatalogo } from '../types/BoxCatalogo';
+
+// Importiamo il nostro form intelligente
+import SmartForm from '../components/SmartForm';
 
 const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null) => void }> = ({ token, setToken }) => {
     const navigate = useNavigate();
@@ -35,6 +38,9 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
     const [errore, setErrore] = useState<string | null>(null);
     const [paginaAttuale, setPaginaAttuale] = useState(0);
     const [totalePagine, setTotalePagine] = useState(0);
+
+    // Stato per mostrare/nascondere il Nutrizionista Virtuale
+    const [showAiQuiz, setShowAiQuiz] = useState(false);
 
     const categorieLista = ["Tutte", "Vegana", "Carne", "Pesce", "Keto", "SenzaGlutine","Dolci","Panificati","Giapponese","Coreano","MadeInNapoli","Pasta"];
     const [categoriaSelezionata, setCategoriaSelezionata] = useState<string>("Tutte");
@@ -70,7 +76,7 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
         } finally {
             setIsLoading(false);
         }
-    }, [token, BASE_URL]);
+    }, [token]);
 
     // Effetto per reset pagina su cambio filtri
     useEffect(() => {
@@ -84,8 +90,9 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
     }, [paginaAttuale, categoriaSelezionata, queryRicerca, scaricaCatalogo]);
 
     // --- GESTIONE CARRELLO ---
-    const aggiungiAlCarrello = async (id: number, nomeBox: string, e: React.MouseEvent) => {
-        e.stopPropagation();
+    const aggiungiAlCarrello = async (id: number, nomeBox: string, e?: React.MouseEvent) => {
+        if (e) e.stopPropagation(); // Evitiamo che cliccando sul "+" si apra anche il dettaglio
+
         if (!token) {
             navigate('/login');
             return;
@@ -93,7 +100,10 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
             const payload = { boxId: id, quantita: 1 };
+
+            // Ho rimosso la doppia chiamata Axios che c'era nel tuo codice originale
             await axios.post(`${BASE_URL}/api/user/cart/add`, payload, config);
+
             alert(`"${nomeBox}" aggiunta al carrello! 🛒`);
         } catch (err) {
             console.error("Errore aggiunta carrello:", err);
@@ -150,7 +160,7 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
                 </motion.header>
 
                 {/* SUB NAVBAR CATEGORIE */}
-                <div className="mb-8 flex items-center gap-2 overflow-x-auto pb-4 no-scrollbar">
+                <div className="mb-12 flex items-center gap-2 overflow-x-auto pb-4 no-scrollbar">
                     {categorieLista.map((cat) => (
                         <Button
                             key={cat}
@@ -163,41 +173,58 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
                     ))}
                 </div>
 
-
+                {/* --- SEZIONE INTELLIGENZA ARTIFICIALE --- */}
                 {!isLoading && !errore && !queryRicerca && (
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="mb-12 bg-gradient-to-r from-indigo-900 via-indigo-700 to-purple-800 rounded-4xl p-8 text-white shadow-xl shadow-indigo-200 flex flex-col lg:flex-row items-center justify-between gap-8 border-4 border-white relative overflow-hidden"
-                    >
-                        {/* Decorazione di sfondo */}
-                        <div className="absolute -top-24 -right-24 opacity-10 rotate-12">
-                            <BrainCircuit className="w-96 h-96" />
-                        </div>
-
-                        <div className="flex items-center gap-6 relative z-10">
-                            <div className="p-4 bg-white/10 rounded-3xl backdrop-blur-md border border-white/20">
-                                <BrainCircuit className="w-10 h-10 text-white" />
-                            </div>
-                            <div>
-                                <h3 className="text-2xl md:text-3xl font-black mb-2 flex items-center gap-3">
-                                    Non sai cosa scegliere? <Sparkles className="w-6 h-6 text-yellow-400" />
-                                </h3>
-                                <p className="text-indigo-100 font-medium text-lg max-w-xl">
-                                    Dicci i tuoi obiettivi e le tue preferenze. Il nostro Chef AI troverà la Box perfetta per te in pochi secondi!
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* ⚠️ Assicurati di avere la rotta '/ai-shopper' configurata su App.tsx per far funzionare questo bottone */}
-                        <Button
-                            onClick={() => navigate('/ai-shopper')}
-                            className="relative z-10 bg-white text-indigo-700 hover:bg-indigo-50 font-black px-10 py-8 rounded-2xl shadow-xl hover:shadow-2xl hover:scale-105 transition-all text-xl whitespace-nowrap w-full lg:w-auto"
+                    <>
+                        {/* Banner Principale */}
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className={`bg-gradient-to-r from-indigo-900 via-indigo-700 to-purple-800 p-8 text-white shadow-xl shadow-indigo-200 flex flex-col lg:flex-row items-center justify-between gap-8 border-4 border-white relative overflow-hidden transition-all duration-500 ${showAiQuiz ? 'rounded-t-4xl rounded-b-none mb-0' : 'rounded-4xl mb-12'}`}
                         >
-                            Chiedi all'IA
-                        </Button>
-                    </motion.div>
+                            {/* Decorazione di sfondo */}
+                            <div className="absolute -top-24 -right-24 opacity-10 rotate-12">
+                                <BrainCircuit className="w-96 h-96" />
+                            </div>
+
+                            <div className="flex items-center gap-6 relative z-10">
+                                <div className="p-4 bg-white/10 rounded-3xl backdrop-blur-md border border-white/20">
+                                    <BrainCircuit className="w-10 h-10 text-white" />
+                                </div>
+                                <div>
+                                    <h3 className="text-2xl md:text-3xl font-black mb-2 flex items-center gap-3">
+                                        Non sai cosa scegliere? <Sparkles className="w-6 h-6 text-yellow-400" />
+                                    </h3>
+                                    <p className="text-indigo-100 font-medium text-lg max-w-xl">
+                                        Dicci i tuoi obiettivi e le tue preferenze. Il nostro Chef AI troverà la Box perfetta per te in pochi secondi!
+                                    </p>
+                                </div>
+                            </div>
+
+                            <Button
+                                onClick={() => setShowAiQuiz(!showAiQuiz)}
+                                className="relative z-10 bg-white text-indigo-700 hover:bg-indigo-50 font-black px-10 py-8 rounded-2xl shadow-xl hover:shadow-2xl hover:scale-105 transition-all text-xl whitespace-nowrap w-full lg:w-auto"
+                            >
+                                {showAiQuiz ? 'Chiudi Assistente' : "Chiedi all'IA"}
+                            </Button>
+                        </motion.div>
+
+                        {/* Form a Scomparsa (SmartForm) */}
+                        <AnimatePresence>
+                            {showAiQuiz && (
+                                <motion.div
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: "auto", opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    className="overflow-hidden mb-12 shadow-xl shadow-indigo-100/50 rounded-b-4xl border-x border-b border-indigo-100 bg-white"
+                                >
+                                    <SmartForm/>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </>
                 )}
+                {/* ------------------------------------------- */}
 
                 {/* GRIGLIA PRODOTTI / LOADING / ERRORI */}
                 <AnimatePresence mode="wait">
@@ -251,7 +278,7 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
                             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8"
                         >
                             {boxes.map((box) => (
-                                <motion.div key={box.id} variants={cardVariants} className="h-full">
+                                <motion.div key={box.id} variants={cardVariants}>
                                     <Card
                                         className="h-full border-none shadow-md hover:shadow-2xl transition-all duration-300 group cursor-pointer bg-card flex flex-col overflow-hidden"
                                         onClick={() => navigate(`/box/${box.id}`)}
@@ -267,29 +294,33 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
                                                 <UtensilsCrossed className="w-16 h-16 text-muted-foreground/30 group-hover:scale-110 transition-transform duration-500" />
                                             )}
 
+                                            {/* BADGE SCONTO: Solo se il prezzo scontato è realmente inferiore */}
                                             {box.prezzoScontato && box.prezzo && box.prezzoScontato < box.prezzo && (
                                                 <Badge className="absolute top-4 left-4 bg-destructive text-destructive-foreground font-black px-3 py-1 shadow-lg">
-                                                    SALE -{box.percentualeSconto}%
+                                                    {box.scontoApplicato || 'SALE'}
                                                 </Badge>
                                             )}
                                         </CardHeader>
 
-                                        <CardContent className="p-6 flex-grow flex flex-col">
+                                        <CardContent className="p-6 flex-grow">
                                             <div className="flex gap-2 mb-3 flex-wrap">
-                                                <Badge variant="secondary" className="text-[10px] uppercase font-bold tracking-wider">
-                                                    {box.categoria}
-                                                </Badge>
+                                                {box.categorie?.map(c => (
+                                                    <Badge key={c} variant="secondary" className="text-[10px] uppercase font-bold tracking-wider">
+                                                        {c}
+                                                    </Badge>
+                                                ))}
                                             </div>
                                             <h3 className="text-xl font-bold mb-2 line-clamp-1 group-hover:text-primary transition-colors">
                                                 {box.nome}
                                             </h3>
                                             <p className="text-muted-foreground text-sm line-clamp-2 leading-relaxed">
-                                                Porzioni: {box.porzioni}
+                                                {box.descrizione}
                                             </p>
                                         </CardContent>
 
                                         <CardFooter className="p-6 pt-0 mt-auto flex items-center justify-between border-t border-border/50 bg-muted/5">
                                             <div className="flex flex-col pt-4">
+                                                {/* LOGICA PREZZO: Rosso solo se c'è sconto reale */}
                                                 {box.prezzoScontato && box.prezzo && box.prezzoScontato < box.prezzo ? (
                                                     <>
                                                         <span className="text-xs text-muted-foreground line-through italic">
@@ -308,7 +339,9 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
                                             <Button
                                                 size="icon"
                                                 className="rounded-xl w-12 h-12 shadow-lg hover:rotate-12 transition-all active:scale-90"
-                                                onClick={(e) => aggiungiAlCarrello(box.id, box.nome, e)}
+                                                onClick={(e) => {
+                                                    aggiungiAlCarrello(box.id, box.nome, e);
+                                                }}
                                             >
                                                 <Plus className="w-6 h-6" />
                                             </Button>
