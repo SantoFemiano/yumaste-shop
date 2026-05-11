@@ -10,7 +10,9 @@ import {
     ChevronRight,
     Plus,
     AlertCircle,
-    UtensilsCrossed
+    UtensilsCrossed,
+    BrainCircuit,
+    Sparkles
 } from 'lucide-react';
 
 // Import componenti shadcn/ui
@@ -68,7 +70,7 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
         } finally {
             setIsLoading(false);
         }
-    }, [token]);
+    }, [token, BASE_URL]);
 
     // Effetto per reset pagina su cambio filtri
     useEffect(() => {
@@ -82,7 +84,8 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
     }, [paginaAttuale, categoriaSelezionata, queryRicerca, scaricaCatalogo]);
 
     // --- GESTIONE CARRELLO ---
-    const aggiungiAlCarrello = async (id: number, nomeBox: string) => {
+    const aggiungiAlCarrello = async (id: number, nomeBox: string, e: React.MouseEvent) => {
+        e.stopPropagation();
         if (!token) {
             navigate('/login');
             return;
@@ -147,7 +150,7 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
                 </motion.header>
 
                 {/* SUB NAVBAR CATEGORIE */}
-                <div className="mb-12 flex items-center gap-2 overflow-x-auto pb-4 no-scrollbar">
+                <div className="mb-8 flex items-center gap-2 overflow-x-auto pb-4 no-scrollbar">
                     {categorieLista.map((cat) => (
                         <Button
                             key={cat}
@@ -159,6 +162,42 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
                         </Button>
                     ))}
                 </div>
+
+
+                {!isLoading && !errore && !queryRicerca && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="mb-12 bg-gradient-to-r from-indigo-900 via-indigo-700 to-purple-800 rounded-4xl p-8 text-white shadow-xl shadow-indigo-200 flex flex-col lg:flex-row items-center justify-between gap-8 border-4 border-white relative overflow-hidden"
+                    >
+                        {/* Decorazione di sfondo */}
+                        <div className="absolute -top-24 -right-24 opacity-10 rotate-12">
+                            <BrainCircuit className="w-96 h-96" />
+                        </div>
+
+                        <div className="flex items-center gap-6 relative z-10">
+                            <div className="p-4 bg-white/10 rounded-3xl backdrop-blur-md border border-white/20">
+                                <BrainCircuit className="w-10 h-10 text-white" />
+                            </div>
+                            <div>
+                                <h3 className="text-2xl md:text-3xl font-black mb-2 flex items-center gap-3">
+                                    Non sai cosa scegliere? <Sparkles className="w-6 h-6 text-yellow-400" />
+                                </h3>
+                                <p className="text-indigo-100 font-medium text-lg max-w-xl">
+                                    Dicci i tuoi obiettivi e le tue preferenze. Il nostro Chef AI troverà la Box perfetta per te in pochi secondi!
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* ⚠️ Assicurati di avere la rotta '/ai-shopper' configurata su App.tsx per far funzionare questo bottone */}
+                        <Button
+                            onClick={() => navigate('/ai-shopper')}
+                            className="relative z-10 bg-white text-indigo-700 hover:bg-indigo-50 font-black px-10 py-8 rounded-2xl shadow-xl hover:shadow-2xl hover:scale-105 transition-all text-xl whitespace-nowrap w-full lg:w-auto"
+                        >
+                            Chiedi all'IA
+                        </Button>
+                    </motion.div>
+                )}
 
                 {/* GRIGLIA PRODOTTI / LOADING / ERRORI */}
                 <AnimatePresence mode="wait">
@@ -212,7 +251,7 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
                             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8"
                         >
                             {boxes.map((box) => (
-                                <motion.div key={box.id} variants={cardVariants}>
+                                <motion.div key={box.id} variants={cardVariants} className="h-full">
                                     <Card
                                         className="h-full border-none shadow-md hover:shadow-2xl transition-all duration-300 group cursor-pointer bg-card flex flex-col overflow-hidden"
                                         onClick={() => navigate(`/box/${box.id}`)}
@@ -228,33 +267,29 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
                                                 <UtensilsCrossed className="w-16 h-16 text-muted-foreground/30 group-hover:scale-110 transition-transform duration-500" />
                                             )}
 
-                                            {/* BADGE SCONTO: Solo se il prezzo scontato è realmente inferiore */}
                                             {box.prezzoScontato && box.prezzo && box.prezzoScontato < box.prezzo && (
                                                 <Badge className="absolute top-4 left-4 bg-destructive text-destructive-foreground font-black px-3 py-1 shadow-lg">
-                                                    {box.scontoApplicato || 'SALE'}
+                                                    SALE -{box.percentualeSconto}%
                                                 </Badge>
                                             )}
                                         </CardHeader>
 
-                                        <CardContent className="p-6 flex-grow">
+                                        <CardContent className="p-6 flex-grow flex flex-col">
                                             <div className="flex gap-2 mb-3 flex-wrap">
-                                                {box.categorie?.map(c => (
-                                                    <Badge key={c} variant="secondary" className="text-[10px] uppercase font-bold tracking-wider">
-                                                        {c}
-                                                    </Badge>
-                                                ))}
+                                                <Badge variant="secondary" className="text-[10px] uppercase font-bold tracking-wider">
+                                                    {box.categoria}
+                                                </Badge>
                                             </div>
                                             <h3 className="text-xl font-bold mb-2 line-clamp-1 group-hover:text-primary transition-colors">
                                                 {box.nome}
                                             </h3>
                                             <p className="text-muted-foreground text-sm line-clamp-2 leading-relaxed">
-                                                {box.descrizione}
+                                                Porzioni: {box.porzioni}
                                             </p>
                                         </CardContent>
 
                                         <CardFooter className="p-6 pt-0 mt-auto flex items-center justify-between border-t border-border/50 bg-muted/5">
                                             <div className="flex flex-col pt-4">
-                                                {/* LOGICA PREZZO: Rosso solo se c'è sconto reale */}
                                                 {box.prezzoScontato && box.prezzo && box.prezzoScontato < box.prezzo ? (
                                                     <>
                                                         <span className="text-xs text-muted-foreground line-through italic">
@@ -273,10 +308,7 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
                                             <Button
                                                 size="icon"
                                                 className="rounded-xl w-12 h-12 shadow-lg hover:rotate-12 transition-all active:scale-90"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    aggiungiAlCarrello(box.id, box.nome);
-                                                }}
+                                                onClick={(e) => aggiungiAlCarrello(box.id, box.nome, e)}
                                             >
                                                 <Plus className="w-6 h-6" />
                                             </Button>
