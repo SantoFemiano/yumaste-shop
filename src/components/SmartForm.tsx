@@ -10,6 +10,13 @@ interface SmartFormProps {
     onClose?: () => void;
 }
 
+// Interfaccia per mappare l'oggetto che arriva dal backend
+interface AiResult {
+    boxId: number | null;
+    messaggio: string;
+    nomeBox: string;
+}
+
 const SmartForm: React.FC<SmartFormProps> = () => {
     const navigate = useNavigate();
     const BASE_URL = import.meta.env.VITE_API_URL;
@@ -20,18 +27,14 @@ const SmartForm: React.FC<SmartFormProps> = () => {
         calorieGiornaliere: 2000
     });
 
-    // Stato separato per gestire gli allergeni come stringa separata da virgole
     const [allergeniInput, setAllergeniInput] = useState<string>('');
-
-    // Modificato: il backend restituisce solo una stringa, non un oggetto con boxId
-    const [aiResult, setAiResult] = useState<string | null>(null);
+    const [aiResult, setAiResult] = useState<AiResult | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
     const chiediAdAi = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
 
-        // Convertiamo la stringa degli allergeni in un array per il DTO
         const allergeniArray = allergeniInput
             .split(',')
             .map(a => a.trim())
@@ -44,7 +47,6 @@ const SmartForm: React.FC<SmartFormProps> = () => {
 
         try {
             const response = await axios.post(`${BASE_URL}/api/public/ai/recommend`, requestBody);
-            // Salviamo direttamente la stringa di risposta
             setAiResult(response.data);
         } catch (error) {
             console.error("Errore AI:", error);
@@ -125,17 +127,32 @@ const SmartForm: React.FC<SmartFormProps> = () => {
             ) : (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
                     <div className="p-4 bg-indigo-50 rounded-2xl border border-indigo-100">
-                        {/* Stampiamo direttamente la stringa aiResult */}
-                        <p className="text-indigo-900 font-medium italic">"{aiResult}"</p>
+                        <p className="text-indigo-900 font-medium italic">"{aiResult.messaggio}"</p>
                     </div>
 
-                    {/* Poiché il backend non restituisce un ID specifico della Box, rimandiamo al catalogo generale */}
-                    <Button
-                        onClick={() => navigate(`/catalogo`)}
-                        className="w-full py-6 rounded-xl bg-indigo-600"
-                    >
-                        Vai al Catalogo <ArrowRight className="ml-2 w-4 h-4" />
-                    </Button>
+                    {/* Se l'AI ha trovato un ID valido lo manda alla Box, altrimenti fallback al Catalogo */}
+                    {aiResult.boxId ? (
+                        <Button
+                            onClick={() => {
+                                navigate(`/box/${aiResult.boxId}`);
+                                if(onClose) onClose();
+                            }}
+                            className="w-full py-6 rounded-xl bg-indigo-600 hover:bg-indigo-700"
+                        >
+                            Vai a {aiResult.nomeBox} <ArrowRight className="ml-2 w-4 h-4" />
+                        </Button>
+                    ) : (
+                        <Button
+                            onClick={() => {
+                                navigate(`/catalogo`);
+                                if(onClose) onClose();
+                            }}
+                            className="w-full py-6 rounded-xl bg-indigo-600 hover:bg-indigo-700"
+                        >
+                            Vai a {aiResult.nomeBox} <ArrowRight className="ml-2 w-4 h-4" />
+                        </Button>
+                    )}
+
                     <Button variant="ghost" onClick={() => setAiResult(null)} className="w-full text-slate-400">
                         Riprova il quiz
                     </Button>
