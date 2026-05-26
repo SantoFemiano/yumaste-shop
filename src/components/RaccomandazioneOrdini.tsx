@@ -34,7 +34,7 @@ const RaccomandazioneOrdini: React.FC<Props> = ({ token, onAggiungiAlCarrello })
 
         try {
             const response = await axios.get<RaccomandazioneResponseDTO>(
-                `${BASE_URL}/api/ai/raccomandazione/ordini`,
+                `${BASE_URL}/api/user/raccomandazione/ordini`,
                 { headers: { Authorization: `Bearer ${token}` } }
             );
             setRisultato(response.data);
