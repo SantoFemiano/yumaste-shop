@@ -11,8 +11,8 @@ import {
     Plus,
     AlertCircle,
     UtensilsCrossed,
-    BrainCircuit, // <-- Aggiunto
-    Sparkles      // <-- Aggiunto
+    BrainCircuit,
+    Sparkles
 } from 'lucide-react';
 
 // Import componenti shadcn/ui
@@ -26,6 +26,9 @@ import type { BoxCatalogo } from '../types/BoxCatalogo';
 
 // Importiamo il nostro form intelligente
 import SmartForm from '../components/SmartForm';
+
+// Importiamo il componente raccomandazione da ordini
+import RaccomandazioneOrdini from '../components/RaccomandazioneOrdini';
 
 const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null) => void }> = ({ token, setToken }) => {
     const navigate = useNavigate();
@@ -91,7 +94,7 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
 
     // --- GESTIONE CARRELLO ---
     const aggiungiAlCarrello = async (id: number, nomeBox: string, e?: React.MouseEvent) => {
-        if (e) e.stopPropagation(); // Evitiamo che cliccando sul "+" si apra anche il dettaglio
+        if (e) e.stopPropagation();
 
         if (!token) {
             navigate('/login');
@@ -100,15 +103,17 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
             const payload = { boxId: id, quantita: 1 };
-
-            // Ho rimosso la doppia chiamata Axios che c'era nel tuo codice originale
             await axios.post(`${BASE_URL}/api/user/cart/add`, payload, config);
-
             alert(`"${nomeBox}" aggiunta al carrello! 🛒`);
         } catch (err) {
             console.error("Errore aggiunta carrello:", err);
             alert("Errore nell'aggiunta al carrello.");
         }
+    };
+
+    // Wrapper compatibile con la firma del componente RaccomandazioneOrdini
+    const aggiungiAlCarrelloDaRaccomandazione = (boxId: number, nomeBox: string) => {
+        aggiungiAlCarrello(boxId, nomeBox);
     };
 
     // --- ANIMAZIONI ---
@@ -176,7 +181,7 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
                 {/* --- SEZIONE INTELLIGENZA ARTIFICIALE --- */}
                 {!isLoading && !errore && !queryRicerca && (
                     <>
-                        {/* Banner Principale */}
+                        {/* Banner Nutrizionista Virtuale (SmartForm) */}
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
@@ -222,6 +227,14 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
                                 </motion.div>
                             )}
                         </AnimatePresence>
+
+                        {/* Banner Raccomandazione da Ordini (solo per utenti loggati) */}
+                        {token && (
+                            <RaccomandazioneOrdini
+                                token={token}
+                                onAggiungiAlCarrello={aggiungiAlCarrelloDaRaccomandazione}
+                            />
+                        )}
                     </>
                 )}
                 {/* ------------------------------------------- */}
@@ -294,7 +307,6 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
                                                 <UtensilsCrossed className="w-16 h-16 text-muted-foreground/30 group-hover:scale-110 transition-transform duration-500" />
                                             )}
 
-                                            {/* BADGE SCONTO: Solo se il prezzo scontato è realmente inferiore */}
                                             {box.prezzoScontato && box.prezzo && box.prezzoScontato < box.prezzo && (
                                                 <Badge className="absolute top-4 left-4 bg-destructive text-destructive-foreground font-black px-3 py-1 shadow-lg">
                                                     {box.scontoApplicato || 'SALE'}
@@ -320,7 +332,6 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
 
                                         <CardFooter className="p-6 pt-0 mt-auto flex items-center justify-between border-t border-border/50 bg-muted/5">
                                             <div className="flex flex-col pt-4">
-                                                {/* LOGICA PREZZO: Rosso solo se c'è sconto reale */}
                                                 {box.prezzoScontato && box.prezzo && box.prezzoScontato < box.prezzo ? (
                                                     <>
                                                         <span className="text-xs text-muted-foreground line-through italic">
