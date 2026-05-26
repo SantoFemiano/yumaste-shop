@@ -30,12 +30,31 @@ const RaccomandazioneOrdini: React.FC<Props> = ({ token, onAggiungiAlCarrello })
     useEffect(() => {
         const fetchRaccomandazioni = async () => {
             try {
+                // Prova prima l'endpoint dedicato alle raccomandazioni
                 const res = await axios.get(`${BASE_URL}/api/user/recommendations`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
-                setBoxes(res.data || []);
+                const data = res.data;
+                if (Array.isArray(data) && data.length > 0) {
+                    setBoxes(data);
+                    return;
+                }
             } catch (_err) {
-                // nessuna raccomandazione disponibile
+                // endpoint non disponibile, usa fallback
+            }
+
+            // Fallback: prendi 4 box casuali dal catalogo pubblico
+            try {
+                const res = await axios.get(
+                    `${BASE_URL}/api/public/boxes?page=0&size=12`,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+                const content: BoxRaccomandazione[] = res.data?.content || [];
+                // Mescola e prendi le prime 4
+                const mescolate = [...content].sort(() => Math.random() - 0.5).slice(0, 4);
+                setBoxes(mescolate);
+            } catch (_err) {
+                // nessuna box disponibile
             } finally {
                 setLoading(false);
             }
