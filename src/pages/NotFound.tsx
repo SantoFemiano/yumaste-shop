@@ -3,44 +3,34 @@ import { useNavigate } from 'react-router-dom';
 import { Home, Search, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-const floatVariants = {
-    animate: {
-        y: [0, -18, 0],
-        transition: { duration: 3.5, repeat: Infinity, ease: 'easeInOut' }
-    }
-};
-
 const NotFound = () => {
     const navigate = useNavigate();
 
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center px-6 text-center overflow-hidden relative">
 
-            {/* Blob decorativo sfondo */}
             <div className="absolute -top-32 -left-32 w-96 h-96 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
             <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
 
-            {/* Numero 404 animato */}
+            {/* Numero 404 animato — animate inline per evitare conflitti di tipo Variants */}
             <motion.div
-                variants={floatVariants}
-                animate="animate"
+                animate={{ y: [0, -18, 0] }}
+                transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' as const }}
                 className="relative mb-4 select-none"
             >
                 <span className="text-[10rem] md:text-[14rem] font-black text-slate-100 leading-none tracking-tighter">
                     404
                 </span>
-                {/* Icona box sopra il numero */}
                 <motion.div
                     className="absolute inset-0 flex items-center justify-center"
                     initial={{ rotate: -8 }}
                     animate={{ rotate: 8 }}
-                    transition={{ duration: 2.5, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' }}
+                    transition={{ duration: 2.5, repeat: Infinity, repeatType: 'reverse' as const, ease: 'easeInOut' as const }}
                 >
                     <ShoppingBag className="w-20 h-20 md:w-28 md:h-28 text-primary/30" strokeWidth={1.2} />
                 </motion.div>
             </motion.div>
 
-            {/* Testo */}
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -56,7 +46,6 @@ const NotFound = () => {
                     Torna al catalogo e trova qualcosa di buono!
                 </p>
 
-                {/* CTA */}
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                     <Button
                         onClick={() => navigate('/')}
@@ -78,7 +67,6 @@ const NotFound = () => {
                 </div>
             </motion.div>
 
-            {/* Footer hint */}
             <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
