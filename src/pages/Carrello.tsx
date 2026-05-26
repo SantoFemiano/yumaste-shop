@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -15,7 +15,6 @@ import {
     Loader2
 } from 'lucide-react';
 
-// Shadcn UI
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -23,109 +22,131 @@ import { Separator } from "@/components/ui/separator";
 import type { Carrello as CarrelloItem } from '../types/Carrello';
 import Navbar from '../components/Navbar';
 
+const BASE_URL = import.meta.env.VITE_API_URL;
+
+// --- Helper: ricalcola il totale localmente ---
+const calcolaTotale = (items: CarrelloItem[]) =>
+    items.reduce((acc, i) => acc + (i.prezzoScontato ?? 0) * i.quantita, 0);
+
 const Carrello: React.FC<{ token: string | null; setToken: (token: string | null) => void }> = ({ token, setToken }) => {
     const navigate = useNavigate();
 
-    // --- STATI CARRELLO ---
     const [elementiCarrello, setElementiCarrello] = useState<CarrelloItem[]>([]);
     const [totaleBackend, setTotaleBackend] = useState<number>(0);
     const [isLoading, setIsLoading] = useState(true);
     const [errore, setErrore] = useState<string | null>(null);
-    const BASE_URL = import.meta.env.VITE_API_URL;
 
-    // --- STATI CHECKOUT ---
     const [indirizzi, setIndirizzi] = useState<any[]>([]);
     const [indirizzoSelezionato, setIndirizzoSelezionato] = useState<number | null>(null);
     const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
 
-    // --- FUNZIONE PER SCARICARE I DATI ---
+    // Ref per rollback ottimistico
+    const snapshotRef = useRef<{ items: CarrelloItem[]; totale: number } | null>(null);
+
+    // --- Carica dati dal server ---
     const scaricaDati = useCallback(async (isInitialLoad = false) => {
         if (isInitialLoad) setIsLoading(true);
         setErrore(null);
-
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-
-            // 1. Scarichiamo il Carrello
             const resCart = await axios.get(`${BASE_URL}/api/user/cart`, config);
             const dati = resCart.data;
-
             if (dati && Array.isArray(dati.items)) {
                 setElementiCarrello(dati.items);
-                setTotaleBackend(dati.totalPrice || 0);
+                setTotaleBackend(dati.totalPrice ?? 0);
             } else {
                 setElementiCarrello([]);
                 setTotaleBackend(0);
             }
-
-            // 2. Scarichiamo gli Indirizzi (solo al caricamento iniziale)
             if (isInitialLoad) {
                 const resInd = await axios.get(`${BASE_URL}/api/user/indirizzi`, config);
                 setIndirizzi(resInd.data);
-
-                if (resInd.data.length > 0) {
-                    setIndirizzoSelezionato(resInd.data[0].id);
-                }
+                if (resInd.data.length > 0) setIndirizzoSelezionato(resInd.data[0].id);
             }
-
-        } catch (error) {
-            console.error("Errore API:", error);
-            setErrore("Impossibile caricare i dati del carrello.");
+        } catch {
+            setErrore('Impossibile caricare i dati del carrello.');
         } finally {
             if (isInitialLoad) setIsLoading(false);
         }
     }, [token]);
 
-    useEffect(() => {
-        if (token) scaricaDati(true);
-    }, [token, scaricaDati]);
+    useEffect(() => { if (token) scaricaDati(true); }, [token, scaricaDati]);
 
-    // --- GESTIONE CARRELLO ---
+    // --- AGGIORNA QUANTITÀ OTTIMISTICO ---
     const aggiornaQuantita = async (boxId: number, nuovaQuantita: number) => {
         if (nuovaQuantita < 1) return;
+
+        // 1. Salva snapshot per rollback
+        snapshotRef.current = { items: elementiCarrello, totale: totaleBackend };
+
+        // 2. Aggiorna UI immediatamente
+        const nuoviItems = elementiCarrello.map(i =>
+            i.boxId === boxId ? { ...i, quantita: nuovaQuantita } : i
+        );
+        setElementiCarrello(nuoviItems);
+        setTotaleBackend(calcolaTotale(nuoviItems));
+
+        // 3. Chiama API in background
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            const payload = { boxId: boxId, quantita: nuovaQuantita };
-            await axios.put(`${BASE_URL}/api/user/cart/update`, payload, config);
+            await axios.put(`${BASE_URL}/api/user/cart/update`, { boxId, quantita: nuovaQuantita }, config);
+            // Sincronizza il totale reale dal server silenziosamente
             scaricaDati(false);
-        } catch (error) {
-            console.error("Errore aggiornamento quantità:", error);
-            window.alert("Impossibile aggiornare la quantità.");
+        } catch {
+            // 4. Rollback in caso di errore
+            if (snapshotRef.current) {
+                setElementiCarrello(snapshotRef.current.items);
+                setTotaleBackend(snapshotRef.current.totale);
+            }
+            setErrore('Impossibile aggiornare la quantità. Riprova.');
+            setTimeout(() => setErrore(null), 3000);
         }
     };
 
+    // --- RIMUOVI DAL CARRELLO OTTIMISTICO ---
     const rimuoviDalCarrello = async (boxId: number) => {
+        // 1. Salva snapshot per rollback
+        snapshotRef.current = { items: elementiCarrello, totale: totaleBackend };
+
+        // 2. Rimuovi subito dalla UI con animazione exit
+        const nuoviItems = elementiCarrello.filter(i => i.boxId !== boxId);
+        setElementiCarrello(nuoviItems);
+        setTotaleBackend(calcolaTotale(nuoviItems));
+
+        // 3. Chiama API in background
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
             await axios.delete(`${BASE_URL}/api/user/cart/remove/${boxId}`, config);
-            scaricaDati(false);
-        } catch (error) {
-            console.error("Errore rimozione prodotto:", error);
-            window.alert("Impossibile rimuovere il prodotto dal carrello.");
+        } catch {
+            // 4. Rollback
+            if (snapshotRef.current) {
+                setElementiCarrello(snapshotRef.current.items);
+                setTotaleBackend(snapshotRef.current.totale);
+            }
+            setErrore('Impossibile rimuovere il prodotto. Riprova.');
+            setTimeout(() => setErrore(null), 3000);
         }
     };
 
-    // --- GESTIONE CHECKOUT ---
+    // --- CHECKOUT ---
     const gestisciCheckout = async () => {
         if (!indirizzoSelezionato) {
-            window.alert("Per favore, seleziona un indirizzo per la consegna.");
+            setErrore('Seleziona un indirizzo per la consegna.');
+            setTimeout(() => setErrore(null), 3000);
             return;
         }
-
         setIsCheckoutLoading(true);
         try {
             const config = { headers: { Authorization: `Bearer ${token}` } };
-            const payload = {
+            const response = await axios.post(`${BASE_URL}/api/user/checkout`, {
                 indirizzoId: indirizzoSelezionato,
-                metodoPagamento: "CARTA_DI_CREDITO"
-            };
-
-            const response = await axios.post(`${BASE_URL}/api/user/checkout`, payload, config);
+                metodoPagamento: 'CARTA_DI_CREDITO'
+            }, config);
             window.alert(`Ordine confermato! Codice: ${response.data.codiceOrdine}`);
             navigate('/');
-        } catch (error) {
-            console.error("Errore durante il checkout:", error);
-            window.alert("Errore nel processare l'ordine.");
+        } catch {
+            setErrore("Errore nel processare l'ordine. Riprova.");
+            setTimeout(() => setErrore(null), 4000);
         } finally {
             setIsCheckoutLoading(false);
         }
@@ -133,7 +154,6 @@ const Carrello: React.FC<{ token: string | null; setToken: (token: string | null
 
     const listaSicura = Array.isArray(elementiCarrello) ? elementiCarrello : [];
 
-    // --- RENDER STATI DI CARICAMENTO/ERRORE ---
     if (isLoading) return (
         <div className="min-h-screen flex items-center justify-center bg-slate-50">
             <Loader2 className="w-12 h-12 animate-spin text-primary" />
@@ -145,7 +165,7 @@ const Carrello: React.FC<{ token: string | null; setToken: (token: string | null
             <Navbar token={token} setToken={setToken} />
 
             <main className="max-w-5xl mx-auto px-6 lg:px-8 py-8 mt-4">
-                <Button variant="ghost" onClick={() => navigate("/")} className="mb-8 hover:bg-white">
+                <Button variant="ghost" onClick={() => navigate('/')} className="mb-8 hover:bg-white">
                     <ChevronLeft className="mr-2 w-4 h-4" /> Continua gli acquisti
                 </Button>
 
@@ -156,16 +176,22 @@ const Carrello: React.FC<{ token: string | null; setToken: (token: string | null
                     <h1 className="text-4xl font-black tracking-tight text-slate-900">Il tuo Carrello</h1>
                 </div>
 
-                {errore ? (
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-                        <Card className="border-rose-200 bg-rose-50 shadow-none rounded-[2rem]">
-                            <CardContent className="flex flex-col items-center justify-center py-12 text-rose-600">
-                                <AlertTriangle className="w-12 h-12 mb-4" />
-                                <p className="text-lg font-bold">{errore}</p>
-                            </CardContent>
-                        </Card>
-                    </motion.div>
-                ) : listaSicura.length === 0 ? (
+                {/* Banner errore inline (no window.alert) */}
+                <AnimatePresence>
+                    {errore && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            className="mb-6 flex items-center gap-3 bg-rose-50 border border-rose-200 text-rose-700 px-5 py-4 rounded-2xl font-semibold"
+                        >
+                            <AlertTriangle className="w-5 h-5 shrink-0" />
+                            {errore}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {listaSicura.length === 0 ? (
                     <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
                         <Card className="border-dashed border-2 border-slate-200 bg-transparent shadow-none rounded-[3rem]">
                             <CardContent className="flex flex-col items-center justify-center py-24">
@@ -180,7 +206,7 @@ const Carrello: React.FC<{ token: string | null; setToken: (token: string | null
                 ) : (
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
 
-                        {/* COLONNA SINISTRA: LISTA PRODOTTI */}
+                        {/* Lista Prodotti */}
                         <div className="lg:col-span-7 space-y-6">
                             <AnimatePresence>
                                 {listaSicura.map((item) => (
@@ -189,13 +215,11 @@ const Carrello: React.FC<{ token: string | null; setToken: (token: string | null
                                         layout
                                         initial={{ opacity: 0, y: 20 }}
                                         animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, x: -50, transition: { duration: 0.2 } }}
+                                        exit={{ opacity: 0, x: -60, scale: 0.95, transition: { duration: 0.25 } }}
                                     >
                                         <Card className="rounded-[2rem] border-none shadow-lg shadow-slate-200/50 overflow-hidden bg-white">
                                             <CardContent className="p-6">
                                                 <div className="flex flex-col sm:flex-row gap-6 items-center">
-
-                                                    {/* Immagine */}
                                                     <div className="w-28 h-28 rounded-[1.5rem] bg-slate-100 flex-shrink-0 flex items-center justify-center overflow-hidden">
                                                         {item.immagineUrl ? (
                                                             <img src={item.immagineUrl} alt={item.nomeBox} className="w-full h-full object-cover" />
@@ -203,44 +227,48 @@ const Carrello: React.FC<{ token: string | null; setToken: (token: string | null
                                                             <ShoppingCart className="w-10 h-10 text-slate-300" />
                                                         )}
                                                     </div>
-
-                                                    {/* Dettagli Box */}
                                                     <div className="flex-grow w-full space-y-4">
                                                         <div className="flex justify-between items-start">
                                                             <div>
                                                                 <h3 className="text-xl font-bold text-slate-900 leading-tight">{item.nomeBox}</h3>
-                                                                <p className="text-sm font-medium text-slate-500 mt-1">
-                                                                    €{item.prezzoScontato?.toFixed(2)} / pz
-                                                                </p>
+                                                                <p className="text-sm font-medium text-slate-500 mt-1">€{item.prezzoScontato?.toFixed(2)} / pz</p>
                                                             </div>
-                                                            <p className="text-2xl font-black text-slate-900">
+                                                            <motion.p
+                                                                key={item.quantita}
+                                                                initial={{ scale: 1.2, color: '#16a34a' }}
+                                                                animate={{ scale: 1, color: '#0f172a' }}
+                                                                transition={{ duration: 0.25 }}
+                                                                className="text-2xl font-black"
+                                                            >
                                                                 €{(item.prezzoScontato ? item.prezzoScontato * item.quantita : 0).toFixed(2)}
-                                                            </p>
+                                                            </motion.p>
                                                         </div>
-
-                                                        {/* Controlli Quantità e Rimozione */}
                                                         <div className="flex items-center justify-between">
                                                             <div className="flex items-center p-1 bg-slate-100 rounded-xl">
                                                                 <Button
-                                                                    variant="ghost"
-                                                                    size="icon"
+                                                                    variant="ghost" size="icon"
                                                                     className="h-8 w-8 rounded-lg hover:bg-white hover:shadow-sm"
                                                                     onClick={() => aggiornaQuantita(item.boxId, item.quantita - 1)}
                                                                     disabled={item.quantita <= 1}
                                                                 >
                                                                     <Minus className="w-4 h-4" />
                                                                 </Button>
-                                                                <span className="w-10 text-center font-bold">{item.quantita}</span>
+                                                                <motion.span
+                                                                    key={item.quantita}
+                                                                    initial={{ y: -6, opacity: 0 }}
+                                                                    animate={{ y: 0, opacity: 1 }}
+                                                                    className="w-10 text-center font-bold"
+                                                                >
+                                                                    {item.quantita}
+                                                                </motion.span>
                                                                 <Button
-                                                                    variant="ghost"
-                                                                    size="icon"
+                                                                    variant="ghost" size="icon"
                                                                     className="h-8 w-8 rounded-lg hover:bg-white hover:shadow-sm"
                                                                     onClick={() => aggiornaQuantita(item.boxId, item.quantita + 1)}
                                                                 >
                                                                     <Plus className="w-4 h-4" />
                                                                 </Button>
                                                             </div>
-
                                                             <Button
                                                                 variant="ghost"
                                                                 className="text-rose-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl font-bold px-3"
@@ -258,10 +286,8 @@ const Carrello: React.FC<{ token: string | null; setToken: (token: string | null
                             </AnimatePresence>
                         </div>
 
-                        {/* COLONNA DESTRA: INDIRIZZI E CHECKOUT */}
+                        {/* Indirizzi + Checkout */}
                         <div className="lg:col-span-5 space-y-8">
-
-                            {/* Sezione Indirizzi */}
                             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
                                 <Card className="rounded-[2rem] border-none shadow-xl shadow-slate-200/50 bg-white">
                                     <CardContent className="p-8">
@@ -269,7 +295,6 @@ const Carrello: React.FC<{ token: string | null; setToken: (token: string | null
                                             <MapPin className="w-6 h-6 text-indigo-500" />
                                             <h3 className="text-xl font-bold text-slate-900">Spedizione</h3>
                                         </div>
-
                                         {indirizzi.length > 0 ? (
                                             <div className="space-y-3">
                                                 {indirizzi.map((ind) => (
@@ -278,8 +303,8 @@ const Carrello: React.FC<{ token: string | null; setToken: (token: string | null
                                                         onClick={() => setIndirizzoSelezionato(ind.id)}
                                                         className={`p-4 rounded-2xl border-2 cursor-pointer transition-all ${
                                                             indirizzoSelezionato === ind.id
-                                                                ? "border-primary bg-primary/5 shadow-sm"
-                                                                : "border-slate-100 hover:border-slate-300"
+                                                                ? 'border-primary bg-primary/5 shadow-sm'
+                                                                : 'border-slate-100 hover:border-slate-300'
                                                         }`}
                                                     >
                                                         <p className="font-bold text-slate-900">{ind.via}, {ind.civico}</p>
@@ -296,36 +321,37 @@ const Carrello: React.FC<{ token: string | null; setToken: (token: string | null
                                 </Card>
                             </motion.div>
 
-                            {/* Sezione Totale e Pagamento */}
                             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
                                 <Card className="rounded-[2.5rem] border-none shadow-2xl bg-slate-900 text-white overflow-hidden">
                                     <CardContent className="p-8">
                                         <h3 className="text-lg font-medium text-slate-400 mb-6">Riepilogo Ordine</h3>
-
                                         <div className="flex justify-between items-center mb-8">
                                             <span className="text-xl font-bold">Totale</span>
-                                            <span className="text-5xl font-black">€{totaleBackend.toFixed(2)}</span>
+                                            <motion.span
+                                                key={totaleBackend.toFixed(2)}
+                                                initial={{ scale: 1.15, color: '#4ade80' }}
+                                                animate={{ scale: 1, color: '#ffffff' }}
+                                                transition={{ duration: 0.3 }}
+                                                className="text-5xl font-black"
+                                            >
+                                                €{totaleBackend.toFixed(2)}
+                                            </motion.span>
                                         </div>
-
                                         <Separator className="bg-slate-700/50 mb-8" />
-
                                         <Button
                                             onClick={gestisciCheckout}
                                             disabled={isCheckoutLoading || !indirizzoSelezionato}
-                                            className="w-full h-16 rounded-2xl text-lg font-black bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/30 transition-transform active:scale-95 disabled:opacity-50 disabled:active:scale-100 disabled:shadow-none"
+                                            className="w-full h-16 rounded-2xl text-lg font-black bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/30 transition-transform active:scale-95 disabled:opacity-50"
                                         >
                                             {isCheckoutLoading ? (
                                                 <Loader2 className="w-6 h-6 animate-spin" />
                                             ) : (
-                                                <>
-                                                    <CreditCard className="w-6 h-6 mr-3" /> Conferma e Paga
-                                                </>
+                                                <><CreditCard className="w-6 h-6 mr-3" /> Conferma e Paga</>
                                             )}
                                         </Button>
                                     </CardContent>
                                 </Card>
                             </motion.div>
-
                         </div>
                     </div>
                 )}
