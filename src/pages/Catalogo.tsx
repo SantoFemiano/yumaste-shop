@@ -40,8 +40,6 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
     const [paginaAttuale, setPaginaAttuale] = useState(0);
     const [totalePagine, setTotalePagine] = useState(0);
     const [showAiQuiz, setShowAiQuiz] = useState(false);
-
-    // Stato feedback aggiunta carrello: boxId in corso o appena aggiunto
     const [feedbackBoxId, setFeedbackBoxId] = useState<number | null>(null);
 
     const categorieLista = ['Tutte', 'Vegana', 'Carne', 'Pesce', 'Keto', 'SenzaGlutine', 'Dolci', 'Panificati', 'Giapponese', 'Coreano', 'MadeInNapoli', 'Pasta'];
@@ -62,7 +60,7 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
                 setBoxes(response.data.content || []);
                 setTotalePagine(response.data.totalPages || 0);
             }
-        } catch {
+        } catch (_err) {
             setErrore('Non siamo riusciti a caricare il menu. Riprova più tardi.');
         } finally {
             setIsLoading(false);
@@ -78,13 +76,11 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
         scaricaCatalogo(paginaAttuale, categoriaSelezionata, queryRicerca);
     }, [paginaAttuale, categoriaSelezionata, queryRicerca, scaricaCatalogo]);
 
-    // --- AGGIUNTA AL CARRELLO senza alert ---
-    const aggiungiAlCarrello = async (id: number, _nomeBox: string, e?: React.MouseEvent) => {
+    const aggiungiAlCarrello = async (id: number, e?: React.MouseEvent) => {
         if (e) e.stopPropagation();
         if (!token) { navigate('/login'); return; }
-        if (feedbackBoxId === id) return; // evita doppio click
+        if (feedbackBoxId === id) return;
 
-        // Ottimistico: mostra spunta subito
         setFeedbackBoxId(id);
         incrementaLocale();
 
@@ -94,19 +90,16 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
                 { boxId: id, quantita: 1 },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
-            // Sincronizza il conteggio reale dopo la risposta
             refreshCart(token);
-        } catch {
-            // Rollback badge
+        } catch (_err) {
             refreshCart(token);
         } finally {
-            // Resetta l'icona dopo 1.5s
             setTimeout(() => setFeedbackBoxId(null), 1500);
         }
     };
 
-    const aggiungiAlCarrelloDaRaccomandazione = (boxId: number, nomeBox: string) => {
-        aggiungiAlCarrello(boxId, nomeBox);
+    const aggiungiAlCarrelloDaRaccomandazione = (boxId: number) => {
+        aggiungiAlCarrello(boxId);
     };
 
     const gridVariants: Variants = {
@@ -151,7 +144,6 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
                     )}
                 </motion.header>
 
-                {/* CATEGORIE */}
                 <div className="mb-12 flex items-center gap-2 overflow-x-auto pb-4 no-scrollbar">
                     {categorieLista.map((cat) => (
                         <Button
@@ -165,7 +157,6 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
                     ))}
                 </div>
 
-                {/* SEZIONE AI */}
                 {!isLoading && !errore && !queryRicerca && (
                     <>
                         <motion.div
@@ -219,7 +210,6 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
                     </>
                 )}
 
-                {/* GRIGLIA */}
                 <AnimatePresence mode="wait">
                     {errore ? (
                         <motion.div key="error" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
@@ -298,7 +288,6 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
                                                 )}
                                             </div>
 
-                                            {/* Bottone con feedback visivo */}
                                             <motion.div
                                                 animate={feedbackBoxId === box.id ? { scale: [1, 1.25, 1] } : {}}
                                                 transition={{ duration: 0.3 }}
@@ -310,7 +299,7 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
                                                             ? 'bg-green-500 hover:bg-green-500'
                                                             : 'hover:rotate-12'
                                                     }`}
-                                                    onClick={(e) => aggiungiAlCarrello(box.id, box.nome, e)}
+                                                    onClick={(e) => aggiungiAlCarrello(box.id, e)}
                                                     disabled={feedbackBoxId === box.id}
                                                 >
                                                     <AnimatePresence mode="wait">
@@ -330,6 +319,7 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
                                                         )}
                                                     </AnimatePresence>
                                                 </Button>
+
                                             </motion.div>
                                         </CardFooter>
                                     </Card>
@@ -339,7 +329,6 @@ const Catalogo: React.FC<{ token: string | null; setToken: (token: string | null
                     )}
                 </AnimatePresence>
 
-                {/* PAGINAZIONE */}
                 {totalePagine > 1 && (
                     <div className="mt-20 flex flex-col md:flex-row items-center justify-center gap-6">
                         <Button variant="outline" disabled={paginaAttuale === 0}

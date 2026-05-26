@@ -18,7 +18,6 @@ const CartContext = createContext<CartContextType>({
 export const CartProvider: React.FC<{ children: React.ReactNode; token: string | null }> = ({ children, token }) => {
     const [boxDistinte, setBoxDistinte] = useState(0);
 
-    // Carica il conteggio reale dal server
     const refreshCart = useCallback(async (tkn: string) => {
         try {
             const res = await axios.get(`${BASE_URL}/api/user/cart`, {
@@ -26,17 +25,15 @@ export const CartProvider: React.FC<{ children: React.ReactNode; token: string |
             });
             const items = res.data?.items;
             setBoxDistinte(Array.isArray(items) ? items.length : 0);
-        } catch {
+        } catch (_err) {
             // silenzioso
         }
     }, []);
 
-    // Aggiornamento ottimistico: incrementa subito +1 senza aspettare il server
     const incrementaLocale = useCallback(() => {
         setBoxDistinte(prev => prev + 1);
     }, []);
 
-    // Carica al mount se c'è già un token
     React.useEffect(() => {
         if (token) refreshCart(token);
     }, [token, refreshCart]);
