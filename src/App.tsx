@@ -3,12 +3,12 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 
 import Login from './pages/Login';
 import Catalogo from './pages/Catalogo';
-import Carrello from './pages/Carrello.tsx';
-import Profilo from './pages/Profilo.tsx';
-import Ordini from './pages/Ordini.tsx';
-import Registrazione from './pages/Registrazione.tsx';
-import DettaglioBox from './pages/DettaglioBox.tsx';
-import NotFound from './pages/NotFound.tsx';
+import Carrello from './pages/Carrello';
+import Profilo from './pages/Profilo';
+import Ordini from './pages/Ordini';
+import Registrazione from './pages/Registrazione';
+import DettaglioBox from './pages/DettaglioBox';
+import NotFound from './pages/NotFound';
 import { CartProvider } from './context/CartContext';
 
 export default function App() {
