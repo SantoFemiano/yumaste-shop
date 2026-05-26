@@ -1,20 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, ShoppingCart, ChevronDown, ChevronUp, UtensilsCrossed } from 'lucide-react';
+import { Sparkles, ShoppingCart, BrainCircuit, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const BASE_URL = import.meta.env.VITE_API_URL;
 
-interface BoxRaccomandazione {
-    id: number;
-    nome: string;
-    descrizione: string;
-    prezzo: number;
-    immagineUrl?: string;
-    categorie?: string[];
+interface AiRecommendationResponseDTO {
+    boxId: number;
+    nomeBox: string;
+    messaggio: string;
 }
 
 interface Props {
@@ -23,116 +19,114 @@ interface Props {
 }
 
 const RaccomandazioneOrdini: React.FC<Props> = ({ token, onAggiungiAlCarrello }) => {
-    const [boxes, setBoxes] = useState<BoxRaccomandazione[]>([]);
+    const [raccomandazione, setRaccomandazione] = useState<AiRecommendationResponseDTO | null>(null);
     const [loading, setLoading] = useState(true);
-    const [expanded, setExpanded] = useState(true);
+    const [errore, setErrore] = useState(false);
+    const [aggiunto, setAggiunto] = useState(false);
+
+    const fetchRaccomandazione = async () => {
+        setLoading(true);
+        setErrore(false);
+        setAggiunto(false);
+        try {
+            const res = await axios.get(`${BASE_URL}/api/user/raccomandazione/ordini`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            setRaccomandazione(res.data);
+        } catch (_err) {
+            setErrore(true);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const fetchRaccomandazioni = async () => {
-            try {
-                // Prova prima l'endpoint dedicato alle raccomandazioni
-                const res = await axios.get(`${BASE_URL}/api/user/recommendations`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
-                const data = res.data;
-                if (Array.isArray(data) && data.length > 0) {
-                    setBoxes(data);
-                    return;
-                }
-            } catch (_err) {
-                // endpoint non disponibile, usa fallback
-            }
-
-            // Fallback: prendi 4 box casuali dal catalogo pubblico
-            try {
-                const res = await axios.get(
-                    `${BASE_URL}/api/public/boxes?page=0&size=12`,
-                    { headers: { Authorization: `Bearer ${token}` } }
-                );
-                const content: BoxRaccomandazione[] = res.data?.content || [];
-                // Mescola e prendi le prime 4
-                const mescolate = [...content].sort(() => Math.random() - 0.5).slice(0, 4);
-                setBoxes(mescolate);
-            } catch (_err) {
-                // nessuna box disponibile
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchRaccomandazioni();
+        fetchRaccomandazione();
     }, [token]);
 
-    if (!loading && boxes.length === 0) return null;
+    const handleAggiungi = () => {
+        if (!raccomandazione) return;
+        onAggiungiAlCarrello(raccomandazione.boxId);
+        setAggiunto(true);
+    };
+
+    // Se ha errore (es. nessun ordine precedente) non mostrare il blocco
+    if (!loading && errore) return null;
 
     return (
-        <div className="mb-12">
-            <div
-                className="flex items-center justify-between cursor-pointer mb-4"
-                onClick={() => setExpanded(e => !e)}
+        <AnimatePresence>
+            <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                transition={{ duration: 0.4 }}
+                className="mb-12 rounded-3xl border border-yellow-200 bg-gradient-to-r from-yellow-50 to-amber-50 p-6 shadow-sm"
             >
-                <div className="flex items-center gap-3">
-                    <Sparkles className="w-6 h-6 text-yellow-500" />
-                    <h3 className="text-xl font-black">Consigliati per te</h3>
-                </div>
-                {expanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-            </div>
-
-            <AnimatePresence>
-                {expanded && (
-                    <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        className="overflow-hidden"
+                {/* Header */}
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-yellow-100 rounded-2xl">
+                            <BrainCircuit className="w-5 h-5 text-yellow-600" />
+                        </div>
+                        <div>
+                            <h3 className="font-black text-base text-slate-900">Chef AI consiglia</h3>
+                            <p className="text-xs text-slate-500">Basato sui tuoi ordini precedenti</p>
+                        </div>
+                    </div>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={fetchRaccomandazione}
+                        disabled={loading}
+                        className="rounded-full text-slate-400 hover:text-yellow-600"
+                        title="Nuovo consiglio"
                     >
-                        {loading ? (
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                {[...Array(4)].map((_, i) => (
-                                    <Skeleton key={i} className="h-40 rounded-2xl" />
-                                ))}
+                        <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                    </Button>
+                </div>
+
+                {/* Contenuto */}
+                {loading ? (
+                    <div className="space-y-3">
+                        <Skeleton className="h-5 w-48 bg-yellow-100" />
+                        <Skeleton className="h-4 w-full bg-yellow-100" />
+                        <Skeleton className="h-4 w-3/4 bg-yellow-100" />
+                    </div>
+                ) : raccomandazione ? (
+                    <motion.div
+                        key={raccomandazione.boxId}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+                    >
+                        <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                                <Sparkles className="w-4 h-4 text-yellow-500 shrink-0" />
+                                <span className="font-black text-slate-900 text-lg">
+                                    {raccomandazione.nomeBox}
+                                </span>
                             </div>
-                        ) : (
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                {boxes.map(box => (
-                                    <motion.div
-                                        key={box.id}
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden flex flex-col"
-                                    >
-                                        <div className="aspect-video bg-muted flex items-center justify-center overflow-hidden">
-                                            {box.immagineUrl ? (
-                                                <img src={box.immagineUrl} alt={box.nome} className="w-full h-full object-cover" />
-                                            ) : (
-                                                <UtensilsCrossed className="w-10 h-10 text-muted-foreground/30" />
-                                            )}
-                                        </div>
-                                        <div className="p-3 flex flex-col gap-2 flex-grow">
-                                            <p className="font-bold text-sm line-clamp-1">{box.nome}</p>
-                                            <div className="flex gap-1 flex-wrap">
-                                                {box.categorie?.slice(0, 2).map(c => (
-                                                    <Badge key={c} variant="secondary" className="text-[10px]">{c}</Badge>
-                                                ))}
-                                            </div>
-                                            <div className="mt-auto flex items-center justify-between pt-2">
-                                                <span className="font-black text-sm">€{box.prezzo.toFixed(2)}</span>
-                                                <Button
-                                                    size="sm"
-                                                    className="h-8 px-3 rounded-xl"
-                                                    onClick={() => onAggiungiAlCarrello(box.id)}
-                                                >
-                                                    <ShoppingCart className="w-3 h-3 mr-1" /> Aggiungi
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    </motion.div>
-                                ))}
-                            </div>
-                        )}
+                            <p className="text-slate-600 text-sm leading-relaxed italic">
+                                "{raccomandazione.messaggio}"
+                            </p>
+                        </div>
+
+                        <Button
+                            onClick={handleAggiungi}
+                            disabled={aggiunto}
+                            className={`shrink-0 rounded-2xl px-6 font-bold shadow-md transition-all ${
+                                aggiunto
+                                    ? 'bg-green-500 hover:bg-green-500 text-white'
+                                    : 'bg-yellow-500 hover:bg-yellow-400 text-white'
+                            }`}
+                        >
+                            <ShoppingCart className="w-4 h-4 mr-2" />
+                            {aggiunto ? 'Aggiunto!' : 'Aggiungi al carrello'}
+                        </Button>
                     </motion.div>
-                )}
-            </AnimatePresence>
-        </div>
+                ) : null}
+            </motion.div>
+        </AnimatePresence>
     );
 };
 
