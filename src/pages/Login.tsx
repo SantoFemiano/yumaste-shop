@@ -125,6 +125,28 @@ const Login: React.FC<{ setToken: (token: string | null) => void }> = ({ setToke
                         )}
                     </button>
 
+                    <div className="mt-6">
+                        <div className="relative">
+                            <div className="absolute inset-0 flex items-center">
+                                <div className="w-full border-t border-slate-200"></div>
+                            </div>
+                            <div className="relative flex justify-center text-sm">
+                                <span className="px-2 bg-white text-slate-500 font-medium">Oppure continua con</span>
+                            </div>
+                        </div>
+
+                        <div className="mt-6">
+                            <a
+                                // Spring Security usa di default questa rotta per iniziare l'OAuth2
+                                href={`${BASE_URL}/oauth2/authorization/github`}
+                                className="w-full flex items-center justify-center gap-3 px-4 py-3.5 border border-slate-200 rounded-2xl shadow-sm bg-white text-slate-700 font-bold hover:bg-slate-50 transition-colors"
+                            >
+                                <Github className="w-5 h-5" />
+                                Accedi con GitHub
+                            </a>
+                        </div>
+                    </div>
+
                     <div className="flex flex-col items-center gap-4 mt-8 pt-6 border-t border-slate-100">
                         <p className="text-sm font-medium text-slate-500">
                             Non hai un account?{' '}
