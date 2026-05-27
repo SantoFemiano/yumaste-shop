@@ -8,7 +8,7 @@ import {
     LogIn,
     ArrowLeft,
     Loader2,
-    AlertCircle
+    AlertCircle, Github
 } from 'lucide-react';
 
 const Login: React.FC<{ setToken: (token: string | null) => void }> = ({ setToken }) => {
