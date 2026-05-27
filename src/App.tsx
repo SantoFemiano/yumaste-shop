@@ -10,7 +10,6 @@ import Profilo from "./pages/Profilo.tsx";
 import Ordini from "./pages/Ordini.tsx";
 import Registrazione from "./pages/Registrazione.tsx";
 import DettaglioBox from "./pages/DettaglioBox.tsx";
-import OAuth2RedirectHandler from "@/pages/OAuth2RedirectHandler.tsx";
 
 // Importiamo i componenti necessari da react-router-dom
 
@@ -38,10 +37,7 @@ export default function App() {
                     }
                 />
 
-                <Route path="/login" element={<Login setToken={setToken} />} />
-
-                <Route path="/oauth2/redirect" element={<OAuth2RedirectHandler setToken={setToken} />} />
-
+                {/* Rotta per la pagina di Login */}
                 <Route
                     path="/login"
                     element={

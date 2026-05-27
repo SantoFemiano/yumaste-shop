@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import logoUrl from '../favIcon/yumaste_icon.svg';
 import {
     Search,
@@ -11,15 +11,15 @@ import {
     X,
     LogIn,
     UserPlus
-} from "lucide-react";
-
-// Import componenti shadcn/ui
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { useCart } from '../context/CartContext';
 
 const Navbar: React.FC<{ token: string | null; setToken: (token: string | null) => void }> = ({ token, setToken }) => {
     const navigate = useNavigate();
     const [termineRicerca, setTermineRicerca] = useState('');
+    const { boxDistinte } = useCart();
 
     const eseguiLogout = () => {
         setToken(null);
@@ -32,7 +32,7 @@ const Navbar: React.FC<{ token: string | null; setToken: (token: string | null) 
         if (termineRicerca.trim() !== '') {
             navigate(`/?search=${encodeURIComponent(termineRicerca)}`);
         } else {
-            navigate(`/`);
+            navigate('/');
         }
     };
 
@@ -55,7 +55,7 @@ const Navbar: React.FC<{ token: string | null; setToken: (token: string | null) 
                 </h1>
             </motion.div>
 
-            {/* RICERCA CON SHADCN + FRAMER MOTION */}
+            {/* RICERCA */}
             <div className="flex-1 max-w-xl mx-4 lg:mx-12">
                 <form onSubmit={gestisciRicerca} className="relative group">
                     <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
@@ -89,14 +89,30 @@ const Navbar: React.FC<{ token: string | null; setToken: (token: string | null) 
             <div className="flex items-center gap-2 shrink-0">
                 {token ? (
                     <>
+                        {/* Carrello con badge */}
                         <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => navigate('/carrello')}
-                            className="text-slate-300 hover:text-white hover:bg-slate-800 rounded-full"
+                            className="relative text-slate-300 hover:text-white hover:bg-slate-800 rounded-full"
                         >
                             <ShoppingCart className="w-5 h-5 md:mr-2" />
                             <span className="hidden md:inline font-bold">Carrello</span>
+
+                            <AnimatePresence>
+                                {boxDistinte > 0 && (
+                                    <motion.span
+                                        key={boxDistinte}
+                                        initial={{ scale: 0, opacity: 0 }}
+                                        animate={{ scale: 1, opacity: 1 }}
+                                        exit={{ scale: 0, opacity: 0 }}
+                                        transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+                                        className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-primary text-white text-[10px] font-black rounded-full flex items-center justify-center shadow-lg shadow-primary/40 leading-none"
+                                    >
+                                        {boxDistinte > 99 ? '99+' : boxDistinte}
+                                    </motion.span>
+                                )}
+                            </AnimatePresence>
                         </Button>
 
                         <Button
