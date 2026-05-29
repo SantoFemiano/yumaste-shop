@@ -8,7 +8,7 @@ import {
     LogIn,
     ArrowLeft,
     Loader2,
-    AlertCircle, Github
+    AlertCircle, GithubIcon
 } from 'lucide-react';
 
 const Login: React.FC<{ setToken: (token: string | null) => void }> = ({ setToken }) => {
@@ -141,7 +141,7 @@ const Login: React.FC<{ setToken: (token: string | null) => void }> = ({ setToke
                                 href={`${BASE_URL}/oauth2/authorization/github`}
                                 className="w-full flex items-center justify-center gap-3 px-4 py-3.5 border border-slate-200 rounded-2xl shadow-sm bg-white text-slate-700 font-bold hover:bg-slate-50 transition-colors"
                             >
-                                <Github className="w-5 h-5" />
+                                <GithubIcon className="w-5 h-5" />
                                 Accedi con GitHub
                             </a>
                         </div>
