@@ -13,7 +13,8 @@ import {
     Loader2,
     X,
     LogOut,
-    AlertTriangle
+    AlertTriangle,
+    Trash2
 } from 'lucide-react';
 
 import Navbar from '../components/Navbar';
@@ -48,6 +49,8 @@ const Profilo: React.FC<{ token: string | null; setToken: (token: string | null)
     const [passwordData, setPasswordData] = useState({ vecchiaPassword: '', nuovaPassword: '', confermaPassword: '' });
     const [isPasswordLoading, setIsPasswordLoading] = useState(false);
     const [nuovoIndirizzo, setNuovoIndirizzo] = useState({ via: '', civico: '', citta: '', cap: '', provincia: '', note: '' });
+    const [idDaEliminare, setIdDaEliminare] = useState<number | null>(null);
+    const [isDeletingIndirizzo, setIsDeletingIndirizzo] = useState(false);
 
     useEffect(() => {
         const scaricaDati = async () => {
@@ -125,6 +128,22 @@ const Profilo: React.FC<{ token: string | null; setToken: (token: string | null)
             setNuovoIndirizzo({ via: '', civico: '', citta: '', cap: '', provincia: '', note: '' });
         } catch {
             window.alert("Errore aggiunta indirizzo.");
+        }
+    };
+
+    const eliminaIndirizzo = async () => {
+        if (idDaEliminare === null) return;
+        setIsDeletingIndirizzo(true);
+        try {
+            const config = { headers: { Authorization: `Bearer ${token}` } };
+            await axios.delete(`${BASE_URL}/api/user/indirizzo/${idDaEliminare}`, config);
+            // Rimuovi l'indirizzo dallo state locale senza ricaricare
+            setIndirizzi(prev => prev.filter(ind => ind.id !== idDaEliminare));
+            setIdDaEliminare(null);
+        } catch {
+            window.alert("Errore durante l'eliminazione dell'indirizzo.");
+        } finally {
+            setIsDeletingIndirizzo(false);
         }
     };
 
@@ -268,10 +287,18 @@ const Profilo: React.FC<{ token: string | null; setToken: (token: string | null)
                                                 <div className="p-3 bg-slate-50 rounded-xl text-slate-400">
                                                     <MapPin className="w-5 h-5" />
                                                 </div>
-                                                <div>
+                                                <div className="flex-1">
                                                     <p className="font-bold text-slate-900">{ind.via}, {ind.civico}</p>
                                                     <p className="text-sm font-medium text-slate-500">{ind.cap} {ind.citta} ({ind.provincia})</p>
                                                 </div>
+                                                {/* Bottone elimina */}
+                                                <button
+                                                    onClick={() => setIdDaEliminare(ind.id)}
+                                                    className="p-2 rounded-xl text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors"
+                                                    title="Elimina indirizzo"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
                                             </div>
                                         ))
                                     ) : (
@@ -312,7 +339,50 @@ const Profilo: React.FC<{ token: string | null; setToken: (token: string | null)
                     </div>
                 )}
             </AnimatePresence>
+    {/* DIALOG CONFERMA ELIMINAZIONE INDIRIZZO */}
+    <AnimatePresence>
+        {idDaEliminare !== null && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+                <motion.div
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+                    onClick={() => setIdDaEliminare(null)}
+                />
+                <motion.div
+                    initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+                    className="bg-white w-full max-w-sm rounded-3xl shadow-2xl relative z-10 p-8 space-y-6 text-center"
+                >
+                    <div className="mx-auto w-16 h-16 bg-rose-50 rounded-2xl flex items-center justify-center">
+                        <Trash2 className="w-8 h-8 text-rose-500" />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-black text-slate-900">Elimina indirizzo</h3>
+                        <p className="text-slate-500 mt-2">Sei sicuro di voler eliminare questo indirizzo? L'azione non è reversibile.</p>
+                    </div>
+                    <div className="flex gap-3">
+                        <button
+                            onClick={() => setIdDaEliminare(null)}
+                            className="flex-1 py-3 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                        >
+                            Annulla
+                        </button>
+                        <button
+                            onClick={eliminaIndirizzo}
+                            disabled={isDeletingIndirizzo}
+                            className="flex-1 py-3 rounded-xl bg-rose-500 text-white font-bold hover:bg-rose-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-70"
+                        >
+                            {isDeletingIndirizzo
+                                ? <Loader2 className="w-4 h-4 animate-spin" />
+                                : <><Trash2 className="w-4 h-4" /> Elimina</>
+                            }
+                        </button>
+                    </div>
+                </motion.div>
+            </div>
+        )}
+    </AnimatePresence>
         </div>
+
     );
 };
 
