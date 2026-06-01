@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://yumaste-shop.vercel.app/sitemap.xml
