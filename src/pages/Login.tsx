@@ -30,9 +30,14 @@ const Login: React.FC<{ setToken: (token: string | null) => void }> = ({ setToke
                 password: password
             });
 
-            const jwtGenerato = response.data.token;
-            setToken(jwtGenerato);
-            localStorage.setItem('jwt_token', jwtGenerato);
+            // Estrai entrambi i token dal backend
+            const { token, refreshToken } = response.data;
+
+            // Salva usando il tuo nome originale per l'access token
+            localStorage.setItem('jwt_token', token);
+            localStorage.setItem('refreshToken', refreshToken);
+
+            setToken(token); // Aggiorna lo stato di App.tsx
             navigate('/');
 
         } catch (err) {

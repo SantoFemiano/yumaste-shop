@@ -15,7 +15,7 @@ import {
     AlertCircle
 } from 'lucide-react';
 
-const Registrazione: React.FC = () => {
+ const Registrazione: React.FC<{ setToken: (token: string | null) => void }> = ({ setToken }) => {
     const navigate = useNavigate();
 
     const [formData, setFormData] = useState({
@@ -40,9 +40,23 @@ const Registrazione: React.FC = () => {
 
         try {
             const url = `${BASE_URL}/api/auth/register`;
-            await axios.post(url, formData);
+            const response = await axios.post(url, formData);
+
+            // Estrai i token
+            const { token, refreshToken } = response.data;
+
+            // Salva nel localStorage con i nomi corretti
+            localStorage.setItem('jwt_token', token);
+            localStorage.setItem('refreshToken', refreshToken);
+
+            setToken(token); // Aggiorna lo stato di App.tsx
+
+
             setSuccesso(true);
-            setTimeout(() => navigate('/login'), 2500);
+
+            // Ridirigi direttamente alla home o al catalogo
+            setTimeout(() => navigate('/'), 2000);
+
         } catch (error) {
             if (axios.isAxiosError(error) && error.response?.status === 400) {
                 setErrore("Dati non validi. Il Codice Fiscale o l'Email potrebbero essere già registrati.");

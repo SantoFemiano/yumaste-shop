@@ -7,13 +7,19 @@ const OAuth2RedirectHandler: React.FC<{ setToken: (token: string | null) => void
     const navigate = useNavigate();
 
     useEffect(() => {
-        // Estrai il token dai query parameters (?token=...)
+        // Estrai sia l'access token che il refresh token dai query parameters (?token=...&refreshToken=...)
         const token = searchParams.get('token');
+        const refreshToken = searchParams.get('refreshToken');
 
         if (token) {
-            // Salva il token nello stato globale e nel localStorage
+            // Salva l'access token nello stato globale e nel localStorage con il nome originale
             setToken(token);
             localStorage.setItem('jwt_token', token);
+
+            // Se presente, salva anche il refresh token
+            if (refreshToken) {
+                localStorage.setItem('refreshToken', refreshToken);
+            }
 
             // Reindirizza l'utente alla dashboard/catalogo
             navigate('/');

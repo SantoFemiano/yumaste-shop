@@ -19,7 +19,7 @@ export default function App() {
         <CartProvider token={token}>
             <Router>
                 <Routes>
-                    <Route path="/registrazione" element={token ? <Navigate to="/" /> : <Registrazione />} />
+                    <Route path="/registrazione" element={token ? <Navigate to="/" /> : <Registrazione setToken={setToken}/>} />
                     <Route path="/login" element={token ? <Navigate to="/" /> : <Login setToken={setToken} />} />
 
                     {/* NUOVA ROTTA: Gestisce il ritorno dal backend dopo il login con GitHub */}
