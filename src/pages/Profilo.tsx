@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import apiClient from '../lib/apiClient';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     User,
@@ -40,7 +40,6 @@ const Profilo: React.FC<{ token: string | null; setToken: (token: string | null)
     const [isLoading, setIsLoading] = useState(true);
     const [errore, setErrore] = useState<string | null>(null);
     const [indirizzi, setIndirizzi] = useState<Indirizzo[]>([]);
-    const BASE_URL = import.meta.env.VITE_API_URL;
     const [isEditingProfile, setIsEditingProfile] = useState(false);
     const [datiModifica, setDatiModifica] = useState<DatiUtente | null>(null);
     const [isModalAperto, setIsModalAperto] = useState(false);
@@ -55,10 +54,10 @@ const Profilo: React.FC<{ token: string | null; setToken: (token: string | null)
     useEffect(() => {
         const scaricaDati = async () => {
             try {
-                const config = { headers: { Authorization: `Bearer ${token}` } };
+                // USIAMO apiClient - niente BASE_URL e niente config headers!
                 const [resProfilo, resIndirizzi] = await Promise.all([
-                    axios.get(`${BASE_URL}/api/user/profile`, config),
-                    axios.get(`${BASE_URL}/api/user/indirizzi`, config)
+                    apiClient.get(`/api/user/profile`),
+                    apiClient.get(`/api/user/indirizzi`)
                 ]);
                 setUtente(resProfilo.data);
                 setIndirizzi(resIndirizzi.data);
@@ -79,8 +78,8 @@ const Profilo: React.FC<{ token: string | null; setToken: (token: string | null)
         const emailCambiata = datiModifica.email !== utente.email;
 
         try {
-            const config = { headers: { Authorization: `Bearer ${token}` } };
-            const response = await axios.put(`${BASE_URL}/api/user/update/profilo`, datiModifica, config);
+            // USIAMO apiClient
+            const response = await apiClient.put(`/api/user/update/profilo`, datiModifica);
             if (emailCambiata) {
                 window.alert("Email aggiornata! Effettua di nuovo il login.");
                 setToken(null);
@@ -103,11 +102,11 @@ const Profilo: React.FC<{ token: string | null; setToken: (token: string | null)
         }
         setIsPasswordLoading(true);
         try {
-            const config = { headers: { Authorization: `Bearer ${token}` } };
-            await axios.put(`${BASE_URL}/api/user/update/profilo/password`, {
+            // USIAMO apiClient
+            await apiClient.put(`/api/user/update/profilo/password`, {
                 vecchiaPassword: passwordData.vecchiaPassword,
                 nuovaPassword: passwordData.nuovaPassword
-            }, config);
+            });
             window.alert("Password aggiornata! 🔒");
             setIsEditingPassword(false);
             setPasswordData({ vecchiaPassword: '', nuovaPassword: '', confermaPassword: '' });
@@ -121,8 +120,8 @@ const Profilo: React.FC<{ token: string | null; setToken: (token: string | null)
     const aggiungiIndirizzo = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const config = { headers: { Authorization: `Bearer ${token}` } };
-            const response = await axios.post(`${BASE_URL}/api/user/insert/indirizzo`, nuovoIndirizzo, config);
+            // USIAMO apiClient
+            const response = await apiClient.post(`/api/user/insert/indirizzo`, nuovoIndirizzo);
             setIndirizzi([...indirizzi, response.data]);
             setIsModalAperto(false);
             setNuovoIndirizzo({ via: '', civico: '', citta: '', cap: '', provincia: '', note: '' });
@@ -135,8 +134,8 @@ const Profilo: React.FC<{ token: string | null; setToken: (token: string | null)
         if (idDaEliminare === null) return;
         setIsDeletingIndirizzo(true);
         try {
-            const config = { headers: { Authorization: `Bearer ${token}` } };
-            await axios.delete(`${BASE_URL}/api/user/indirizzo/${idDaEliminare}`, config);
+            // USIAMO apiClient
+            await apiClient.delete(`/api/user/indirizzo/${idDaEliminare}`);
             // Rimuovi l'indirizzo dallo state locale senza ricaricare
             setIndirizzi(prev => prev.filter(ind => ind.id !== idDaEliminare));
             setIdDaEliminare(null);
@@ -339,48 +338,48 @@ const Profilo: React.FC<{ token: string | null; setToken: (token: string | null)
                     </div>
                 )}
             </AnimatePresence>
-    {/* DIALOG CONFERMA ELIMINAZIONE INDIRIZZO */}
-    <AnimatePresence>
-        {idDaEliminare !== null && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
-                <motion.div
-                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                    className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-                    onClick={() => setIdDaEliminare(null)}
-                />
-                <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-                    className="bg-white w-full max-w-sm rounded-3xl shadow-2xl relative z-10 p-8 space-y-6 text-center"
-                >
-                    <div className="mx-auto w-16 h-16 bg-rose-50 rounded-2xl flex items-center justify-center">
-                        <Trash2 className="w-8 h-8 text-rose-500" />
-                    </div>
-                    <div>
-                        <h3 className="text-xl font-black text-slate-900">Elimina indirizzo</h3>
-                        <p className="text-slate-500 mt-2">Sei sicuro di voler eliminare questo indirizzo? L'azione non è reversibile.</p>
-                    </div>
-                    <div className="flex gap-3">
-                        <button
+            {/* DIALOG CONFERMA ELIMINAZIONE INDIRIZZO */}
+            <AnimatePresence>
+                {idDaEliminare !== null && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+                        <motion.div
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
                             onClick={() => setIdDaEliminare(null)}
-                            className="flex-1 py-3 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                        />
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+                            className="bg-white w-full max-w-sm rounded-3xl shadow-2xl relative z-10 p-8 space-y-6 text-center"
                         >
-                            Annulla
-                        </button>
-                        <button
-                            onClick={eliminaIndirizzo}
-                            disabled={isDeletingIndirizzo}
-                            className="flex-1 py-3 rounded-xl bg-rose-500 text-white font-bold hover:bg-rose-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-70"
-                        >
-                            {isDeletingIndirizzo
-                                ? <Loader2 className="w-4 h-4 animate-spin" />
-                                : <><Trash2 className="w-4 h-4" /> Elimina</>
-                            }
-                        </button>
+                            <div className="mx-auto w-16 h-16 bg-rose-50 rounded-2xl flex items-center justify-center">
+                                <Trash2 className="w-8 h-8 text-rose-500" />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-black text-slate-900">Elimina indirizzo</h3>
+                                <p className="text-slate-500 mt-2">Sei sicuro di voler eliminare questo indirizzo? L'azione non è reversibile.</p>
+                            </div>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setIdDaEliminare(null)}
+                                    className="flex-1 py-3 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                                >
+                                    Annulla
+                                </button>
+                                <button
+                                    onClick={eliminaIndirizzo}
+                                    disabled={isDeletingIndirizzo}
+                                    className="flex-1 py-3 rounded-xl bg-rose-500 text-white font-bold hover:bg-rose-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-70"
+                                >
+                                    {isDeletingIndirizzo
+                                        ? <Loader2 className="w-4 h-4 animate-spin" />
+                                        : <><Trash2 className="w-4 h-4" /> Elimina</>
+                                    }
+                                </button>
+                            </div>
+                        </motion.div>
                     </div>
-                </motion.div>
-            </div>
-        )}
-    </AnimatePresence>
+                )}
+            </AnimatePresence>
         </div>
 
     );

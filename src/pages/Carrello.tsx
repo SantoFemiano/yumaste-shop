@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import apiClient from '../lib/apiClient'; // <-- IMPORT CORRETTO
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     ChevronLeft,
@@ -22,7 +22,15 @@ import { Separator } from "@/components/ui/separator";
 import type { Carrello as CarrelloItem } from '../types/Carrello';
 import Navbar from '../components/Navbar';
 
-const BASE_URL = import.meta.env.VITE_API_URL;
+interface Indirizzo {
+    id: number;
+    via: string;
+    civico: string;
+    cap: string;
+    citta: string;
+    provincia: string;
+}
+
 
 // --- Helper: ricalcola il totale localmente ---
 const calcolaTotale = (items: CarrelloItem[]) =>
@@ -36,7 +44,7 @@ const Carrello: React.FC<{ token: string | null; setToken: (token: string | null
     const [isLoading, setIsLoading] = useState(true);
     const [errore, setErrore] = useState<string | null>(null);
 
-    const [indirizzi, setIndirizzi] = useState<any[]>([]);
+    const [indirizzi, setIndirizzi] = useState<Indirizzo[]>([]);
     const [indirizzoSelezionato, setIndirizzoSelezionato] = useState<number | null>(null);
     const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
 
@@ -48,8 +56,8 @@ const Carrello: React.FC<{ token: string | null; setToken: (token: string | null
         if (isInitialLoad) setIsLoading(true);
         setErrore(null);
         try {
-            const config = { headers: { Authorization: `Bearer ${token}` } };
-            const resCart = await axios.get(`${BASE_URL}/api/user/cart`, config);
+            // USIAMO apiClient - niente BASE_URL e niente config headers!
+            const resCart = await apiClient.get(`/api/user/cart`);
             const dati = resCart.data;
             if (dati && Array.isArray(dati.items)) {
                 setElementiCarrello(dati.items);
@@ -59,7 +67,7 @@ const Carrello: React.FC<{ token: string | null; setToken: (token: string | null
                 setTotaleBackend(0);
             }
             if (isInitialLoad) {
-                const resInd = await axios.get(`${BASE_URL}/api/user/indirizzi`, config);
+                const resInd = await apiClient.get(`/api/user/indirizzi`);
                 setIndirizzi(resInd.data);
                 if (resInd.data.length > 0) setIndirizzoSelezionato(resInd.data[0].id);
             }
@@ -76,24 +84,19 @@ const Carrello: React.FC<{ token: string | null; setToken: (token: string | null
     const aggiornaQuantita = async (boxId: number, nuovaQuantita: number) => {
         if (nuovaQuantita < 1) return;
 
-        // 1. Salva snapshot per rollback
         snapshotRef.current = { items: elementiCarrello, totale: totaleBackend };
 
-        // 2. Aggiorna UI immediatamente
         const nuoviItems = elementiCarrello.map(i =>
             i.boxId === boxId ? { ...i, quantita: nuovaQuantita } : i
         );
         setElementiCarrello(nuoviItems);
         setTotaleBackend(calcolaTotale(nuoviItems));
 
-        // 3. Chiama API in background
         try {
-            const config = { headers: { Authorization: `Bearer ${token}` } };
-            await axios.put(`${BASE_URL}/api/user/cart/update`, { boxId, quantita: nuovaQuantita }, config);
-            // Sincronizza il totale reale dal server silenziosamente
+            // USIAMO apiClient
+            await apiClient.put(`/api/user/cart/update`, { boxId, quantita: nuovaQuantita });
             scaricaDati(false);
         } catch {
-            // 4. Rollback in caso di errore
             if (snapshotRef.current) {
                 setElementiCarrello(snapshotRef.current.items);
                 setTotaleBackend(snapshotRef.current.totale);
@@ -105,20 +108,16 @@ const Carrello: React.FC<{ token: string | null; setToken: (token: string | null
 
     // --- RIMUOVI DAL CARRELLO OTTIMISTICO ---
     const rimuoviDalCarrello = async (boxId: number) => {
-        // 1. Salva snapshot per rollback
         snapshotRef.current = { items: elementiCarrello, totale: totaleBackend };
 
-        // 2. Rimuovi subito dalla UI con animazione exit
         const nuoviItems = elementiCarrello.filter(i => i.boxId !== boxId);
         setElementiCarrello(nuoviItems);
         setTotaleBackend(calcolaTotale(nuoviItems));
 
-        // 3. Chiama API in background
         try {
-            const config = { headers: { Authorization: `Bearer ${token}` } };
-            await axios.delete(`${BASE_URL}/api/user/cart/remove/${boxId}`, config);
+            // USIAMO apiClient
+            await apiClient.delete(`/api/user/cart/remove/${boxId}`);
         } catch {
-            // 4. Rollback
             if (snapshotRef.current) {
                 setElementiCarrello(snapshotRef.current.items);
                 setTotaleBackend(snapshotRef.current.totale);
@@ -137,11 +136,11 @@ const Carrello: React.FC<{ token: string | null; setToken: (token: string | null
         }
         setIsCheckoutLoading(true);
         try {
-            const config = { headers: { Authorization: `Bearer ${token}` } };
-            const response = await axios.post(`${BASE_URL}/api/user/checkout`, {
+            // USIAMO apiClient
+            const response = await apiClient.post(`/api/user/checkout`, {
                 indirizzoId: indirizzoSelezionato,
                 metodoPagamento: 'CARTA_DI_CREDITO'
-            }, config);
+            });
             window.alert(`Ordine confermato! Codice: ${response.data.codiceOrdine}`);
             navigate('/');
         } catch {

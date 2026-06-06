@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import apiClient from '../lib/apiClient'; // <-- IMPORT CORRETTO
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     ChevronLeft,
@@ -15,7 +15,6 @@ import {
     Loader2
 } from 'lucide-react';
 
-// Shadcn UI (Simulated/Standard tailwind)
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -62,13 +61,12 @@ const Ordini: React.FC<{ token: string | null; setToken: (token: string | null) 
     const [ordineEspanso, setOrdineEspanso] = useState<number | null>(null);
     const [dettagliOrdine, setDettagliOrdine] = useState<OrdiniDettagliDTO[]>([]);
     const [isLoadingDettagli, setIsLoadingDettagli] = useState(false);
-    const BASE_URL = import.meta.env.VITE_API_URL;
 
     useEffect(() => {
         const scaricaOrdini = async () => {
             try {
-                const config = { headers: { Authorization: `Bearer ${token}` } };
-                const response = await axios.get(`${BASE_URL}/api/user/ordini`, config);
+                // USIAMO apiClient - niente header Authorization manuali!
+                const response = await apiClient.get(`/api/user/ordini`);
                 setOrdini(response.data);
             } catch (error) {
                 console.error("Errore caricamento ordini:", error);
@@ -89,11 +87,10 @@ const Ordini: React.FC<{ token: string | null; setToken: (token: string | null) 
         setIsLoadingDettagli(true);
 
         try {
-            const config = { headers: { Authorization: `Bearer ${token}` } };
-            const url = `${BASE_URL}/api/user/ordine/${idOrdine}/dettagli`;
-            const response = await axios.get(url, config);
+            // USIAMO apiClient
+            const response = await apiClient.get(`/api/user/ordine/${idOrdine}/dettagli`);
             setDettagliOrdine(response.data);
-        } catch (error) {
+        } catch{
             window.alert("Impossibile caricare i dettagli dell'ordine.");
             setOrdineEspanso(null);
         } finally {

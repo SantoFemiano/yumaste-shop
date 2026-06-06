@@ -1,19 +1,25 @@
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
+
+// 2. Definisci l'interfaccia per gli oggetti nella coda
+interface FailedQueueItem {
+    resolve: (token: string) => void;
+    reject: (error: AxiosError) => void;
+}
 
 const apiClient = axios.create({
     baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8084',
 });
 
-// Variabili per gestire la concorrenza (chiamate simultanee con token scaduto)
 let isRefreshing = false;
-let failedQueue: Array<{ resolve: (value?: unknown) => void; reject: (reason?: any) => void }> = [];
+// 3. Usa l'interfaccia invece di "any"
+let failedQueue: FailedQueueItem[] = [];
 
-// Funzione per risolvere o rigettare tutte le chiamate messe in coda
-const processQueue = (error: any, token: string | null = null) => {
-    failedQueue.forEach(prom => {
+// 4. Tipizza i parametri della funzione
+const processQueue = (error: AxiosError | null, token: string | null = null) => {
+    failedQueue.forEach((prom) => {
         if (error) {
             prom.reject(error);
-        } else {
+        } else if (token) {
             prom.resolve(token);
         }
     });
@@ -22,7 +28,7 @@ const processQueue = (error: any, token: string | null = null) => {
 
 // Aggiunge l'Access Token (jwt_token) a ogni richiesta
 apiClient.interceptors.request.use((config) => {
-    const token = localStorage.getItem('jwt_token'); // Usa il nome originale
+    const token = localStorage.getItem('jwt_token');
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
     }
@@ -71,7 +77,7 @@ apiClient.interceptors.response.use(
                 localStorage.setItem('jwt_token', newAccessToken);
                 localStorage.setItem('refreshToken', returnedRefreshToken);
 
-                // Il refresh è andato a buon fine: sblocco tutte le chiamate in coda passandogli il nuovo token
+                // Il refresh è andato a buon fine: sblocco tutte le chiamate in coda
                 processQueue(null, newAccessToken);
 
                 // Aggiorna l'header e riprova la chiamata originale
@@ -79,14 +85,19 @@ apiClient.interceptors.response.use(
                 return apiClient(originalRequest);
 
             } catch (refreshError) {
+
+                const error = refreshError as AxiosError;
+
                 // Il refresh è fallito: faccio fallire tutte le chiamate in coda
-                processQueue(refreshError, null);
+                processQueue(error, null);
 
                 console.error('Sessione scaduta. Logout forzato.');
                 localStorage.removeItem('jwt_token');
                 localStorage.removeItem('refreshToken');
                 window.location.href = '/login';
-                return Promise.reject(refreshError);
+
+                // Restituiamo l'errore castato
+                return Promise.reject(error);
             } finally {
                 // Sblocco il flag per futuri refresh
                 isRefreshing = false;
@@ -94,7 +105,7 @@ apiClient.interceptors.response.use(
         }
 
         return Promise.reject(error);
-    }
-);
+    } // fine callback async
+); // <--- QUESTA ERA LA PARENTESI MANCANANTE (chiude il .use)
 
 export default apiClient;
